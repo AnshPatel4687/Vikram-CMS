@@ -11,6 +11,8 @@ import {
 } from "firebase/firestore";
 import { notifyEmployee } from "../../firebase/notifications";
 import AdminLayout from "../../components/admin/AdminLayout";
+import ExportButton from "../../components/shared/ExportButton";
+import { exportAttendancePDF, exportAttendanceExcel } from "../../utils/exportUtils";
 import { Save, CalendarCheck } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -124,6 +126,11 @@ const Attendance = () => {
           <p style={styles.headerSub}>Mark daily attendance for employees</p>
         </div>
         <div style={styles.headerRight}>
+          <ExportButton
+            label="Export"
+            onExportPDF={() => exportAttendancePDF(employees, attendanceData, selectedDate)}
+            onExportExcel={() => exportAttendanceExcel(employees, attendanceData, selectedDate)}
+          />
           <input
             type="date"
             value={selectedDate}

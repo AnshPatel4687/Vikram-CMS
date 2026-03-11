@@ -4,10 +4,12 @@ import { db } from "../../firebase/config";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { useAuth } from "../../context/AuthContext";
 import EmpLayout from "../../components/employee/EmpLayout";
+import ExportButton from "../../components/shared/ExportButton";
+import { exportEmpProjectsPDF, exportEmpProjectsExcel } from "../../utils/exportUtils";
 import toast from "react-hot-toast";
 
 const EmpProjects = () => {
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,8 +46,15 @@ const EmpProjects = () => {
   return (
     <EmpLayout pageTitle="My Projects">
       <div style={styles.header}>
-        <h3 style={styles.headerTitle}>My Projects</h3>
-        <p style={styles.headerSub}>Total: {projects.length} projects assigned</p>
+        <div>
+          <h3 style={styles.headerTitle}>My Projects</h3>
+          <p style={styles.headerSub}>Total: {projects.length} projects assigned</p>
+        </div>
+        <ExportButton
+          label="Export"
+          onExportPDF={() => exportEmpProjectsPDF(projects, userData?.name || user?.email)}
+          onExportExcel={() => exportEmpProjectsExcel(projects, userData?.name || user?.email)}
+        />
       </div>
 
       {loading ? (
@@ -80,6 +89,9 @@ const EmpProjects = () => {
 const styles = {
   header: {
     marginBottom: "24px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: "20px",

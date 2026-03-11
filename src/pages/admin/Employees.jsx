@@ -13,6 +13,8 @@ import {
 } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import AdminLayout from "../../components/admin/AdminLayout";
+import ExportButton from "../../components/shared/ExportButton";
+import { exportEmployeesPDF, exportEmployeesExcel } from "../../utils/exportUtils";
 import { UserPlus, Pencil, Trash2, X, Check, Clock } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -281,13 +283,20 @@ const Employees = () => {
           <h3 style={styles.headerTitle}>Employee Management</h3>
           <p style={styles.headerSub}>Total: {employees.length} employees</p>
         </div>
-        <button
-          onClick={() => { resetForm(); setShowModal(true); }}
-          style={styles.addBtn}
-        >
-          <UserPlus size={18} />
-          Add Employee
-        </button>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <ExportButton
+            label="Export"
+            onExportPDF={() => exportEmployeesPDF(employees)}
+            onExportExcel={() => exportEmployeesExcel(employees)}
+          />
+          <button
+            onClick={() => { resetForm(); setShowModal(true); }}
+            style={styles.addBtn}
+          >
+            <UserPlus size={18} />
+            Add Employee
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}

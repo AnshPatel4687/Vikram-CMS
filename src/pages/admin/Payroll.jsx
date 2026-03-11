@@ -11,6 +11,8 @@ import {
   where,
 } from "firebase/firestore";
 import AdminLayout from "../../components/admin/AdminLayout";
+import ExportButton from "../../components/shared/ExportButton";
+import { exportPayrollPDF, exportPayrollExcel } from "../../utils/exportUtils";
 import { DollarSign, Check, X } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -162,14 +164,21 @@ const Payroll = () => {
           <h3 style={styles.headerTitle}>Payroll Management</h3>
           <p style={styles.headerSub}>Manage employee salaries</p>
         </div>
-        <div style={styles.monthBox}>
-          <label style={styles.monthLabel}>Select Month:</label>
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={handleMonthChange}
-            style={styles.monthInput}
+        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <ExportButton
+            label="Export"
+            onExportPDF={() => exportPayrollPDF(employees, payrolls, selectedMonth)}
+            onExportExcel={() => exportPayrollExcel(employees, payrolls, selectedMonth)}
           />
+          <div style={styles.monthBox}>
+            <label style={styles.monthLabel}>Select Month:</label>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={handleMonthChange}
+              style={styles.monthInput}
+            />
+          </div>
         </div>
       </div>
 

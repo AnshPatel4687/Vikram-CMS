@@ -9,6 +9,8 @@ import {
 } from "firebase/firestore";
 import { notifyEmployee } from "../../firebase/notifications";
 import AdminLayout from "../../components/admin/AdminLayout";
+import ExportButton from "../../components/shared/ExportButton";
+import { exportLeavesPDF, exportLeavesExcel } from "../../utils/exportUtils";
 import { Check, X } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -102,6 +104,11 @@ const Leaves = () => {
           <h3 style={styles.headerTitle}>Leave Requests</h3>
           <p style={styles.headerSub}>Manage employee leave requests</p>
         </div>
+        <ExportButton
+          label="Export"
+          onExportPDF={() => exportLeavesPDF(filteredLeaves)}
+          onExportExcel={() => exportLeavesExcel(filteredLeaves)}
+        />
       </div>
 
       {/* Stats */}

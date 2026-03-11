@@ -4,6 +4,8 @@ import { db } from "../../firebase/config";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { useAuth } from "../../context/AuthContext";
 import EmpLayout from "../../components/employee/EmpLayout";
+import ExportButton from "../../components/shared/ExportButton";
+import { exportEmpSalaryPDF, exportEmpSalaryExcel } from "../../utils/exportUtils";
 import toast from "react-hot-toast";
 
 const EmpSalary = () => {
@@ -41,9 +43,16 @@ const EmpSalary = () => {
   return (
     <EmpLayout pageTitle="My Salary">
       {/* Header */}
-      <div style={styles.header}>
-        <h3 style={styles.headerTitle}>My Salary</h3>
-        <p style={styles.headerSub}>Your salary history</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "24px" }}>
+        <div>
+          <h3 style={styles.headerTitle}>My Salary</h3>
+          <p style={styles.headerSub}>Your salary history</p>
+        </div>
+        <ExportButton
+          label="Export"
+          onExportPDF={() => exportEmpSalaryPDF(payrolls, userData)}
+          onExportExcel={() => exportEmpSalaryExcel(payrolls, userData)}
+        />
       </div>
 
       {/* Basic Salary Card */}

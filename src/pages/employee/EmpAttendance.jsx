@@ -4,10 +4,12 @@ import { db } from "../../firebase/config";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { useAuth } from "../../context/AuthContext";
 import EmpLayout from "../../components/employee/EmpLayout";
+import ExportButton from "../../components/shared/ExportButton";
+import { exportEmpAttendancePDF, exportEmpAttendanceExcel } from "../../utils/exportUtils";
 import toast from "react-hot-toast";
 
 const EmpAttendance = () => {
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -61,9 +63,16 @@ const EmpAttendance = () => {
   return (
     <EmpLayout pageTitle="My Attendance">
       {/* Header */}
-      <div style={styles.header}>
-        <h3 style={styles.headerTitle}>My Attendance</h3>
-        <p style={styles.headerSub}>Your attendance record</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "24px" }}>
+        <div>
+          <h3 style={styles.headerTitle}>My Attendance</h3>
+          <p style={styles.headerSub}>Your attendance record</p>
+        </div>
+        <ExportButton
+          label="Export"
+          onExportPDF={() => exportEmpAttendancePDF(attendance, stats, userData?.name || user?.email)}
+          onExportExcel={() => exportEmpAttendanceExcel(attendance, userData?.name || user?.email)}
+        />
       </div>
 
       {/* Stats */}

@@ -13,6 +13,8 @@ import {
 } from "firebase/firestore";
 import { notifyEmployee } from "../../firebase/notifications";
 import AdminLayout from "../../components/admin/AdminLayout";
+import ExportButton from "../../components/shared/ExportButton";
+import { exportProjectsPDF, exportProjectsExcel } from "../../utils/exportUtils";
 import { Plus, Pencil, Trash2, X, Check } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -220,13 +222,20 @@ const Projects = () => {
           <h3 style={styles.headerTitle}>Project Management</h3>
           <p style={styles.headerSub}>Total: {projects.length} projects</p>
         </div>
-        <button
-          onClick={() => { resetForm(); setShowModal(true); }}
-          style={styles.addBtn}
-        >
-          <Plus size={18} />
-          Add Project
-        </button>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <ExportButton
+            label="Export"
+            onExportPDF={() => exportProjectsPDF(projects, employees)}
+            onExportExcel={() => exportProjectsExcel(projects, employees)}
+          />
+          <button
+            onClick={() => { resetForm(); setShowModal(true); }}
+            style={styles.addBtn}
+          >
+            <Plus size={18} />
+            Add Project
+          </button>
+        </div>
       </div>
 
       {/* Projects Table */}
