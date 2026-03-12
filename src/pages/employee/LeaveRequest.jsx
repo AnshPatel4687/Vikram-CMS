@@ -1,548 +1,161 @@
 // src/pages/employee/LeaveRequest.jsx
 import { useEffect, useState } from "react";
 import { db } from "../../firebase/config";
-import {
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  where,
-  orderBy,
-} from "firebase/firestore";
+import { collection, addDoc, getDocs, query, where, orderBy } from "firebase/firestore";
 import { useAuth } from "../../context/AuthContext";
-import { sendNotification } from "../../firebase/notifications";
 import EmpLayout from "../../components/employee/EmpLayout";
 import { Plus, X, Check } from "lucide-react";
 import toast from "react-hot-toast";
 
 const LeaveRequest = () => {
   const { user, userData } = useAuth();
-  const [leaves, setLeaves] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [leaves, setLeaves]       = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [visible, setVisible]     = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [leaveForm, setLeaveForm] = useState({
-    type: "",
-    from: "",
-    to: "",
-    reason: "",
-  });
+  const [form, setForm]           = useState({ type:"", from:"", to:"", reason:"" });
 
   const fetchLeaves = async () => {
     try {
-      const q = query(
-        collection(db, "leaves"),
-        where("userId", "==", user.uid),
-        orderBy("createdAt", "desc")
-      );
-      const snap = await getDocs(q);
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setLeaves(list);
-    } catch (error) {
-      console.log("Fetch error:", error);
-      toast.error("Error fetching leaves!");
-    } finally {
-      setLoading(false);
-    }
+      const snap = await getDocs(query(collection(db,"leaves"), where("userId","==",user.uid), orderBy("createdAt","desc")));
+      setLeaves(snap.docs.map(d=>({id:d.id,...d.data()})));
+    } catch { toast.error("Error fetching leaves!"); }
+    finally { setLoading(false); setTimeout(()=>setVisible(true),60); }
   };
+  useEffect(()=>{ if(user) fetchLeaves(); },[user]);
 
-  useEffect(() => {
-    fetchLeaves();
-  }, []);
-
-  const calculateDays = () => {
-    if (!leaveForm.from || !leaveForm.to) return 0;
-    const from = new Date(leaveForm.from);
-    const to = new Date(leaveForm.to);
-    const diff = Math.ceil((to - from) / (1000 * 60 * 60 * 24)) + 1;
-    return diff > 0 ? diff : 0;
+  const calcDays = () => {
+    if (!form.from||!form.to) return 0;
+    const d = Math.ceil((new Date(form.to)-new Date(form.from))/(1000*60*60*24))+1;
+    return d>0?d:0;
   };
-
-  const validateForm = () => {
-    if (!leaveForm.type) {
-      toast.error("Please select leave type!"); return false;
-    }
-    if (!leaveForm.from) {
-      toast.error("Please select from date!"); return false;
-    }
-    if (!leaveForm.to) {
-      toast.error("Please select to date!"); return false;
-    }
-    if (new Date(leaveForm.from) > new Date(leaveForm.to)) {
-      toast.error("From date cannot be after to date!"); return false;
-    }
-    if (!leaveForm.reason.trim()) {
-      toast.error("Please enter reason!"); return false;
-    }
-    if (leaveForm.reason.trim().length < 10) {
-      toast.error("Reason must be at least 10 characters!"); return false;
-    }
+  const validate = () => {
+    if (!form.type)                             { toast.error("Select leave type!"); return false; }
+    if (!form.from)                             { toast.error("Select from date!"); return false; }
+    if (!form.to)                               { toast.error("Select to date!"); return false; }
+    if (new Date(form.from)>new Date(form.to)) { toast.error("From date cannot be after to!"); return false; }
+    if (!form.reason.trim())                    { toast.error("Enter reason!"); return false; }
+    if (form.reason.trim().length<10)          { toast.error("Reason must be min 10 chars!"); return false; }
     return true;
   };
-
   const handleSubmit = async () => {
-    if (!validateForm()) return;
+    if (!validate()) return;
     setSubmitting(true);
     try {
-      const days = calculateDays();
-
-      // Leave Firestore me save karo
-      await addDoc(collection(db, "leaves"), {
-        userId: user.uid,
-        userName: userData?.name,
-        department: userData?.department,
-        type: leaveForm.type,
-        from: leaveForm.from,
-        to: leaveForm.to,
-        days,
-        reason: leaveForm.reason.trim(),
-        status: "pending",
-        createdAt: new Date().toISOString(),
-      });
-
-      console.log("Leave saved! Ab admin dhundh raha hoon...");
-
-      // Admin ka UID dhundo
-      const adminSnap = await getDocs(
-        query(collection(db, "users"), where("role", "==", "admin"))
-      );
-
-      console.log("Admin found:", adminSnap.size);
-
+      await addDoc(collection(db,"leaves"), { userId:user.uid, userName:userData?.name, department:userData?.department, type:form.type, from:form.from, to:form.to, days:calcDays(), reason:form.reason.trim(), status:"pending", createdAt:new Date().toISOString() });
+      const adminSnap = await getDocs(query(collection(db,"users"), where("role","==","admin")));
       if (!adminSnap.empty) {
-        const adminId = adminSnap.docs[0].id;
-        console.log("Admin ID:", adminId);
-
-        // Notification directly Firestore me add karo
-        await addDoc(collection(db, "notifications"), {
-          userId: adminId,
-          title: "New Leave Request 📋",
-          message: `${userData?.name} ne ${leaveForm.type} leave apply ki hai (${days} days)`,
-          type: "leave",
-          read: false,
-          createdAt: new Date().toISOString(),
-        });
-
-        console.log("Notification sent! ✅");
-      } else {
-        console.log("Admin nahi mila!");
+        await addDoc(collection(db,"notifications"), { userId:adminSnap.docs[0].id, title:"New Leave Request 📋", message:`${userData?.name} ne ${form.type} leave apply ki hai (${calcDays()} days)`, type:"leave", read:false, createdAt:new Date().toISOString() });
       }
-
-      toast.success("Leave request submitted! ✅");
-      setShowModal(false);
-      setLeaveForm({ type: "", from: "", to: "", reason: "" });
-      fetchLeaves();
-    } catch (error) {
-      console.log("Submit error:", error);
-      toast.error("Failed to submit leave!");
-    } finally {
-      setSubmitting(false);
-    }
+      toast.success("Leave submitted! ✅"); setShowModal(false); setForm({type:"",from:"",to:"",reason:""}); fetchLeaves();
+    } catch { toast.error("Failed to submit!"); }
+    finally { setSubmitting(false); }
   };
 
-  const getStatusStyle = (status) => {
-    switch (status) {
-      case "approved": return { background: "#dcfce7", color: "#16a34a" };
-      case "rejected": return { background: "#fee2e2", color: "#dc2626" };
-      default: return { background: "#fef9c3", color: "#d97706" };
-    }
-  };
-
-  const pending = leaves.filter((l) => l.status === "pending").length;
-  const approved = leaves.filter((l) => l.status === "approved").length;
-  const rejected = leaves.filter((l) => l.status === "rejected").length;
+  const pending  = leaves.filter(l=>l.status==="pending").length;
+  const approved = leaves.filter(l=>l.status==="approved").length;
+  const rejected = leaves.filter(l=>l.status==="rejected").length;
+  const leaveTypes = ["Sick Leave","Casual Leave","Annual Leave","Emergency Leave","Maternity Leave","Paternity Leave"];
 
   return (
     <EmpLayout pageTitle="Leave Request">
-      {/* Header */}
-      <div style={styles.header}>
-        <div>
-          <h3 style={styles.headerTitle}>My Leave Requests</h3>
-          <p style={styles.headerSub}>Apply and track your leave requests</p>
-        </div>
-        <button onClick={() => setShowModal(true)} style={styles.addBtn}>
-          <Plus size={18} />
-          Apply Leave
-        </button>
-      </div>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        .elp{font-family:'Plus Jakarta Sans',sans-serif;}
+        .elp-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;opacity:0;transform:translateY(16px);transition:all .5s cubic-bezier(.22,1,.36,1);}
+        .elp-hdr.vis{opacity:1;transform:translateY(0);}
+        .elp-title{font-size:20px;font-weight:800;color:#0f172a;letter-spacing:-.4px;margin:0;}
+        .elp-sub{font-size:13px;color:#94a3b8;margin:3px 0 0;}
+        .elp-add-btn{display:flex;align-items:center;gap:8px;padding:11px 20px;background:linear-gradient(135deg,#06b6d4,#0891b2);color:#fff;border:none;border-radius:12px;cursor:pointer;font-weight:700;font-size:14px;font-family:'Plus Jakarta Sans',sans-serif;transition:all .22s;box-shadow:0 4px 14px rgba(6,182,212,0.3);}
+        .elp-add-btn:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(6,182,212,0.4);}
+        .elp-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px;opacity:0;transform:translateY(14px);transition:all .5s cubic-bezier(.22,1,.36,1) .08s;}
+        .elp-stats.vis{opacity:1;transform:translateY(0);}
+        .elp-stat{background:#fff;border-radius:14px;padding:18px 20px;border:1px solid #f1f5f9;box-shadow:0 2px 12px rgba(0,0,0,0.04);position:relative;overflow:hidden;}
+        .elp-stat-bar{position:absolute;left:0;top:0;bottom:0;width:4px;}
+        .elp-stat-val{font-size:30px;font-weight:800;color:#0f172a;letter-spacing:-1px;margin:0 0 4px;}
+        .elp-stat-lbl{font-size:13px;color:#94a3b8;margin:0;font-weight:500;}
+        .elp-box{background:#fff;border-radius:16px;overflow:hidden;border:1px solid #f1f5f9;box-shadow:0 4px 24px rgba(0,0,0,0.04);opacity:0;transform:translateY(14px);transition:all .5s cubic-bezier(.22,1,.36,1) .15s;}
+        .elp-box.vis{opacity:1;transform:translateY(0);}
+        .elp-empty{text-align:center;padding:64px;color:#94a3b8;font-size:15px;}
+        .elp-loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:48px;color:#94a3b8;}
+        .elp-spin{width:18px;height:18px;border:2px solid #e2e8f0;border-top-color:#06b6d4;border-radius:50%;animation:elpspin .7s linear infinite;}
+        @keyframes elpspin{to{transform:rotate(360deg);}}
+        table.elp-tbl{width:100%;border-collapse:collapse;}
+        .elp-thead tr{background:#f8fafc;}
+        .elp-th{padding:13px 16px;text-align:left;font-size:11.5px;font-weight:700;color:#94a3b8;letter-spacing:.6px;text-transform:uppercase;border-bottom:1px solid #f1f5f9;}
+        .elp-tr{border-bottom:1px solid #f8fafc;transition:background .15s;}
+        .elp-tr:hover{background:#fafbff;}
+        .elp-td{padding:13px 16px;font-size:14px;color:#1e293b;font-weight:500;}
+        .elp-type{background:rgba(6,182,212,0.1);color:#0891b2;padding:4px 10px;border-radius:100px;font-size:12px;font-weight:600;}
+        .elp-reason{color:#64748b;font-size:13px;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .elp-overlay{position:fixed;inset:0;background:rgba(10,10,20,0.7);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:999;animation:elpfade .2s ease;}
+        @keyframes elpfade{from{opacity:0;}to{opacity:1;}}
+        .elp-modal{background:#fff;border-radius:20px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;animation:elpslide .3s cubic-bezier(.22,1,.36,1);}
+        @keyframes elpslide{from{opacity:0;transform:translateY(20px) scale(.97);}to{opacity:1;transform:none;}}
+        .elp-mhdr{display:flex;justify-content:space-between;align-items:center;padding:22px 26px;border-bottom:1px solid #f1f5f9;}
+        .elp-mtitle{font-size:17px;font-weight:800;color:#0f172a;margin:0;}
+        .elp-mclose{width:34px;height:34px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#64748b;}
+        .elp-mbody{padding:24px 26px;display:flex;flex-direction:column;gap:16px;}
+        .elp-fg2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+        .elp-fgrp{display:flex;flex-direction:column;gap:7px;}
+        .elp-lbl{font-size:12.5px;font-weight:600;color:#374151;}
+        .elp-inp{padding:11px 14px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:14px;font-family:'Plus Jakarta Sans',sans-serif;color:#0f172a;outline:none;transition:all .22s;width:100%;background:#f8fafc;}
+        .elp-inp:focus{border-color:#06b6d4;background:#fff;box-shadow:0 0 0 4px rgba(6,182,212,0.08);}
+        .elp-days-preview{background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2);border-radius:10px;padding:12px 16px;font-size:14px;color:#0891b2;font-weight:600;}
+        .elp-mftr{display:flex;justify-content:flex-end;gap:10px;padding:18px 26px;border-top:1px solid #f1f5f9;}
+        .elp-cancel{padding:10px 20px;background:#f8fafc;color:#64748b;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;font-weight:600;font-size:14px;font-family:'Plus Jakarta Sans',sans-serif;}
+        .elp-submit{display:flex;align-items:center;gap:7px;padding:10px 22px;background:linear-gradient(135deg,#06b6d4,#0891b2);color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700;font-size:14px;font-family:'Plus Jakarta Sans',sans-serif;box-shadow:0 4px 12px rgba(6,182,212,0.3);transition:all .2s;}
+        .elp-submit:hover{transform:translateY(-1px);}
+        .elp-submit:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+      `}</style>
 
-      {/* Stats */}
-      <div style={styles.statsRow}>
-        <div style={{ ...styles.statCard, borderLeft: "4px solid #f59e0b" }}>
-          <p style={styles.statNum}>{pending}</p>
-          <p style={styles.statLabel}>Pending</p>
+      <div className="elp">
+        <div className={`elp-hdr ${visible?"vis":""}`}>
+          <div><p className="elp-title">My Leave Requests</p><p className="elp-sub">Apply and track your leaves</p></div>
+          <button className="elp-add-btn" onClick={()=>setShowModal(true)}><Plus size={16}/>Apply Leave</button>
         </div>
-        <div style={{ ...styles.statCard, borderLeft: "4px solid #16a34a" }}>
-          <p style={styles.statNum}>{approved}</p>
-          <p style={styles.statLabel}>Approved</p>
+        <div className={`elp-stats ${visible?"vis":""}`}>
+          {[{val:pending,lbl:"Pending",clr:"#f59e0b"},{val:approved,lbl:"Approved",clr:"#16a34a"},{val:rejected,lbl:"Rejected",clr:"#ef4444"},{val:leaves.length,lbl:"Total",clr:"#06b6d4"}].map((s,i)=>(
+            <div className="elp-stat" key={i}><div className="elp-stat-bar" style={{background:s.clr}}/><p className="elp-stat-val">{s.val}</p><p className="elp-stat-lbl">{s.lbl}</p></div>
+          ))}
         </div>
-        <div style={{ ...styles.statCard, borderLeft: "4px solid #dc2626" }}>
-          <p style={styles.statNum}>{rejected}</p>
-          <p style={styles.statLabel}>Rejected</p>
+        <div className={`elp-box ${visible?"vis":""}`}>
+          {loading?<div className="elp-loading"><div className="elp-spin"/>Loading...</div>:leaves.length===0?<div className="elp-empty">🌿 No leave requests yet!</div>:(
+            <table className="elp-tbl">
+              <thead className="elp-thead"><tr><th className="elp-th">#</th><th className="elp-th">Type</th><th className="elp-th">From</th><th className="elp-th">To</th><th className="elp-th">Days</th><th className="elp-th">Reason</th><th className="elp-th">Status</th></tr></thead>
+              <tbody>
+                {leaves.map((l,i)=>{
+                  const sc=l.status==="approved"?{bg:"rgba(22,163,74,0.1)",clr:"#16a34a",ic:"✅"}:l.status==="rejected"?{bg:"rgba(239,68,68,0.1)",clr:"#ef4444",ic:"❌"}:{bg:"rgba(245,158,11,0.1)",clr:"#d97706",ic:"⏳"};
+                  return <tr key={l.id} className="elp-tr"><td className="elp-td">{i+1}</td><td className="elp-td"><span className="elp-type">{l.type}</span></td><td className="elp-td">{l.from}</td><td className="elp-td">{l.to}</td><td className="elp-td">{l.days}d</td><td className="elp-td"><span className="elp-reason">{l.reason}</span></td><td className="elp-td"><span style={{background:sc.bg,color:sc.clr,padding:"4px 12px",borderRadius:"100px",fontSize:"12px",fontWeight:"700",textTransform:"capitalize"}}>{sc.ic} {l.status}</span></td></tr>;
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
-        <div style={{ ...styles.statCard, borderLeft: "4px solid #4f46e5" }}>
-          <p style={styles.statNum}>{leaves.length}</p>
-          <p style={styles.statLabel}>Total</p>
-        </div>
-      </div>
 
-      {/* Table */}
-      <div style={styles.tableBox}>
-        {loading ? (
-          <div style={styles.loading}>Loading...</div>
-        ) : leaves.length === 0 ? (
-          <div style={styles.empty}>No leave requests yet. Apply your first leave!</div>
-        ) : (
-          <table style={styles.table}>
-            <thead>
-              <tr style={styles.thead}>
-                <th style={styles.th}>#</th>
-                <th style={styles.th}>Type</th>
-                <th style={styles.th}>From</th>
-                <th style={styles.th}>To</th>
-                <th style={styles.th}>Days</th>
-                <th style={styles.th}>Reason</th>
-                <th style={styles.th}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leaves.map((leave, index) => (
-                <tr key={leave.id} style={styles.tr}>
-                  <td style={styles.td}>{index + 1}</td>
-                  <td style={styles.td}>
-                    <span style={styles.typeBadge}>{leave.type}</span>
-                  </td>
-                  <td style={styles.td}>{leave.from}</td>
-                  <td style={styles.td}>{leave.to}</td>
-                  <td style={styles.td}>{leave.days} day(s)</td>
-                  <td style={styles.td}>{leave.reason}</td>
-                  <td style={styles.td}>
-                    <span style={{
-                      ...styles.statusBadge,
-                      ...getStatusStyle(leave.status),
-                    }}>
-                      {leave.status === "approved" && "✅ "}
-                      {leave.status === "rejected" && "❌ "}
-                      {leave.status === "pending" && "⏳ "}
-                      {leave.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Apply Leave Modal */}
-      {showModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modal}>
-            <div style={styles.modalHeader}>
-              <h3 style={styles.modalTitle}>Apply Leave</h3>
-              <button
-                onClick={() => setShowModal(false)}
-                style={styles.closeBtn}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div style={styles.modalBody}>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Leave Type *</label>
-                <select
-                  value={leaveForm.type}
-                  onChange={(e) => setLeaveForm({ ...leaveForm, type: e.target.value })}
-                  style={styles.input}
-                >
-                  <option value="">Select Leave Type</option>
-                  <option value="Sick Leave">Sick Leave</option>
-                  <option value="Casual Leave">Casual Leave</option>
-                  <option value="Annual Leave">Annual Leave</option>
-                  <option value="Emergency Leave">Emergency Leave</option>
-                  <option value="Maternity Leave">Maternity Leave</option>
-                  <option value="Paternity Leave">Paternity Leave</option>
-                </select>
-              </div>
-
-              <div style={styles.formRow}>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>From Date *</label>
-                  <input
-                    type="date"
-                    value={leaveForm.from}
-                    onChange={(e) => setLeaveForm({ ...leaveForm, from: e.target.value })}
-                    style={styles.input}
-                    min={new Date().toISOString().split("T")[0]}
-                  />
+        {showModal&&(
+          <div className="elp-overlay">
+            <div className="elp-modal">
+              <div className="elp-mhdr"><p className="elp-mtitle">Apply Leave</p><button className="elp-mclose" onClick={()=>setShowModal(false)}><X size={16}/></button></div>
+              <div className="elp-mbody">
+                <div className="elp-fgrp"><label className="elp-lbl">Leave Type *</label><select className="elp-inp" value={form.type} onChange={e=>setForm({...form,type:e.target.value})}><option value="">Select type</option>{leaveTypes.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
+                <div className="elp-fg2">
+                  <div className="elp-fgrp"><label className="elp-lbl">From Date *</label><input className="elp-inp" type="date" value={form.from} onChange={e=>setForm({...form,from:e.target.value})} min={new Date().toISOString().split("T")[0]}/></div>
+                  <div className="elp-fgrp"><label className="elp-lbl">To Date *</label><input className="elp-inp" type="date" value={form.to} onChange={e=>setForm({...form,to:e.target.value})} min={form.from||new Date().toISOString().split("T")[0]}/></div>
                 </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>To Date *</label>
-                  <input
-                    type="date"
-                    value={leaveForm.to}
-                    onChange={(e) => setLeaveForm({ ...leaveForm, to: e.target.value })}
-                    style={styles.input}
-                    min={leaveForm.from || new Date().toISOString().split("T")[0]}
-                  />
-                </div>
+                {form.from&&form.to&&<div className="elp-days-preview">📅 Total: {calcDays()} day(s)</div>}
+                <div className="elp-fgrp"><label className="elp-lbl">Reason *</label><textarea className="elp-inp" value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})} placeholder="Min 10 characters" style={{height:90,resize:"vertical"}}/></div>
               </div>
-
-              {/* Days Preview */}
-              {leaveForm.from && leaveForm.to && (
-                <div style={styles.daysPreview}>
-                  📅 Total Days: <strong>{calculateDays()} day(s)</strong>
-                </div>
-              )}
-
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Reason *</label>
-                <textarea
-                  value={leaveForm.reason}
-                  onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })}
-                  placeholder="Enter reason (min 10 characters)"
-                  style={{ ...styles.input, height: "100px", resize: "vertical" }}
-                />
+              <div className="elp-mftr">
+                <button className="elp-cancel" onClick={()=>setShowModal(false)}>Cancel</button>
+                <button className="elp-submit" onClick={handleSubmit} disabled={submitting}><Check size={15}/>{submitting?"Submitting...":"Submit Leave"}</button>
               </div>
-            </div>
-
-            <div style={styles.modalFooter}>
-              <button
-                onClick={() => setShowModal(false)}
-                style={styles.cancelBtn}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={submitting}
-                style={{ ...styles.submitBtn, opacity: submitting ? 0.7 : 1 }}
-              >
-                <Check size={18} />
-                {submitting ? "Submitting..." : "Submit Leave"}
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </EmpLayout>
   );
 };
-
-const styles = {
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "24px",
-  },
-  headerTitle: {
-    fontSize: "20px",
-    fontWeight: "bold",
-    color: "#1e293b",
-    margin: 0,
-  },
-  headerSub: {
-    color: "#64748b",
-    fontSize: "14px",
-    margin: "4px 0 0 0",
-  },
-  addBtn: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "12px 20px",
-    background: "linear-gradient(135deg, #06b6d4, #0891b2)",
-    color: "#fff",
-    border: "none",
-    borderRadius: "10px",
-    cursor: "pointer",
-    fontWeight: "600",
-    fontSize: "15px",
-  },
-  statsRow: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: "16px",
-    marginBottom: "24px",
-  },
-  statCard: {
-    background: "#fff",
-    borderRadius: "12px",
-    padding: "16px 20px",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-  },
-  statNum: {
-    fontSize: "28px",
-    fontWeight: "bold",
-    color: "#1e293b",
-    margin: 0,
-  },
-  statLabel: {
-    fontSize: "13px",
-    color: "#64748b",
-    margin: "4px 0 0 0",
-  },
-  tableBox: {
-    background: "#fff",
-    borderRadius: "16px",
-    overflow: "hidden",
-    boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
-  },
-  loading: {
-    textAlign: "center",
-    padding: "40px",
-    color: "#64748b",
-  },
-  empty: {
-    textAlign: "center",
-    padding: "60px",
-    color: "#64748b",
-    fontSize: "16px",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-  thead: {
-    background: "#f8fafc",
-  },
-  th: {
-    padding: "14px 16px",
-    textAlign: "left",
-    fontSize: "13px",
-    fontWeight: "600",
-    color: "#64748b",
-    borderBottom: "1px solid #e2e8f0",
-  },
-  tr: {
-    borderBottom: "1px solid #f1f5f9",
-  },
-  td: {
-    padding: "14px 16px",
-    fontSize: "14px",
-    color: "#1e293b",
-  },
-  typeBadge: {
-    background: "#e0f2fe",
-    color: "#0891b2",
-    padding: "4px 10px",
-    borderRadius: "20px",
-    fontSize: "12px",
-    fontWeight: "600",
-  },
-  statusBadge: {
-    padding: "6px 14px",
-    borderRadius: "20px",
-    fontSize: "13px",
-    fontWeight: "600",
-    textTransform: "capitalize",
-  },
-  modalOverlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.5)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 999,
-  },
-  modal: {
-    background: "#fff",
-    borderRadius: "16px",
-    width: "500px",
-    maxWidth: "95%",
-    maxHeight: "90vh",
-    overflow: "auto",
-  },
-  modalHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "20px 24px",
-    borderBottom: "1px solid #e2e8f0",
-  },
-  modalTitle: {
-    fontSize: "18px",
-    fontWeight: "bold",
-    color: "#1e293b",
-    margin: 0,
-  },
-  closeBtn: {
-    background: "#f1f5f9",
-    border: "none",
-    borderRadius: "8px",
-    padding: "8px",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-  },
-  modalBody: {
-    padding: "24px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "16px",
-  },
-  formRow: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "16px",
-  },
-  formGroup: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-  },
-  label: {
-    fontSize: "13px",
-    fontWeight: "600",
-    color: "#374151",
-  },
-  input: {
-    padding: "10px 14px",
-    borderRadius: "8px",
-    border: "2px solid #e2e8f0",
-    fontSize: "14px",
-    outline: "none",
-    width: "100%",
-  },
-  daysPreview: {
-    background: "#f0f9ff",
-    border: "1px solid #bae6fd",
-    borderRadius: "8px",
-    padding: "12px 16px",
-    fontSize: "14px",
-    color: "#0891b2",
-  },
-  modalFooter: {
-    display: "flex",
-    justifyContent: "flex-end",
-    gap: "12px",
-    padding: "16px 24px",
-    borderTop: "1px solid #e2e8f0",
-  },
-  cancelBtn: {
-    padding: "10px 20px",
-    background: "#f1f5f9",
-    color: "#64748b",
-    border: "none",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "600",
-  },
-  submitBtn: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "10px 20px",
-    background: "linear-gradient(135deg, #06b6d4, #0891b2)",
-    color: "#fff",
-    border: "none",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "600",
-  },
-};
-
 export default LeaveRequest;

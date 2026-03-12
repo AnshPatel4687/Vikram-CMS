@@ -2,43 +2,15 @@
 import EmpSidebar from "./EmpSidebar";
 import EmpNavbar from "./EmpNavbar";
 
-const EmpLayout = ({ children, pageTitle }) => {
-  return (
-    <div style={styles.container}>
-      {/* Sidebar */}
-      <EmpSidebar />
-
-      {/* Main Content */}
-      <div style={styles.main}>
-        {/* Navbar */}
-        <EmpNavbar pageTitle={pageTitle} />
-
-        {/* Page Content */}
-        <div style={styles.content}>
-          {children}
-        </div>
+const EmpLayout = ({ children, pageTitle }) => (
+  <div style={{ display:"flex", minHeight:"100vh", background:"#f6f8fc" }}>
+    <EmpSidebar />
+    <div style={{ marginLeft:"260px", flex:1, display:"flex", flexDirection:"column" }}>
+      <EmpNavbar pageTitle={pageTitle} />
+      <div style={{ marginTop:"68px", padding:"28px", flex:1 }}>
+        {children}
       </div>
     </div>
-  );
-};
-
-const styles = {
-  container: {
-    display: "flex",
-    minHeight: "100vh",
-    background: "#f0f2f5",
-  },
-  main: {
-    marginLeft: "260px",
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-  },
-  content: {
-    marginTop: "70px",
-    padding: "30px",
-    flex: 1,
-  },
-};
-
+  </div>
+);
 export default EmpLayout;

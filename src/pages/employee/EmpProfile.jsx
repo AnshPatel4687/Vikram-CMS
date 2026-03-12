@@ -4,166 +4,124 @@ import { db } from "../../firebase/config";
 import { doc, updateDoc } from "firebase/firestore";
 import { useAuth } from "../../context/AuthContext";
 import EmpLayout from "../../components/employee/EmpLayout";
-import { User, Pencil, Check, X } from "lucide-react";
+import { Pencil, Check, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 const EmpProfile = () => {
   const { user, userData, refreshUserData } = useAuth();
   const [editMode, setEditMode] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState({
-    name: userData?.name || "",
-    phone: userData?.phone || "",
-  });
+  const [saving, setSaving]     = useState(false);
+  const [formData, setFormData] = useState({ name:userData?.name||"", phone:userData?.phone||"" });
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const validateForm = () => {
-    if (!formData.name.trim()) {
-      toast.error("Name is required!"); return false;
-    }
-    if (formData.name.trim().length < 3) {
-      toast.error("Name must be at least 3 characters!"); return false;
-    }
-    if (!/^[a-zA-Z\s]+$/.test(formData.name)) {
-      toast.error("Name must contain only letters!"); return false;
-    }
-    if (!formData.phone.trim()) {
-      toast.error("Phone is required!"); return false;
-    }
-    if (!/^[6-9]\d{9}$/.test(formData.phone)) {
-      toast.error("Enter valid 10-digit Indian phone number!"); return false;
-    }
+  const validate = () => {
+    if (!formData.name.trim())                        { toast.error("Name is required!"); return false; }
+    if (formData.name.trim().length < 3)             { toast.error("Min 3 characters!"); return false; }
+    if (!/^[a-zA-Z\s]+$/.test(formData.name))       { toast.error("Letters only!"); return false; }
+    if (!formData.phone.trim())                       { toast.error("Phone is required!"); return false; }
+    if (!/^[6-9]\d{9}$/.test(formData.phone))       { toast.error("Enter valid 10-digit phone!"); return false; }
     return true;
   };
- 
   const handleSave = async () => {
-  if (!validateForm()) return;
-  setSaving(true);
-  try {
-    await updateDoc(doc(db, "users", user.uid), {
-      name: formData.name.trim(),
-      phone: formData.phone.trim(),
-    });
-    await refreshUserData();
-    toast.success("Profile updated! ✅");
-    setEditMode(false);
-    // Form data bhi update karo
-    setFormData({
-         name: formData.name.trim(),
-      phone: formData.phone.trim(),
-    });
-  } catch (error) {
-    console.log("Profile update error:", error);
-    toast.error("Failed to update profile! Check Firestore rules.");
-  } finally {
-    setSaving(false);
-  }
-};
-  
+    if (!validate()) return;
+    setSaving(true);
+    try {
+      await updateDoc(doc(db,"users",user.uid), { name:formData.name.trim(), phone:formData.phone.trim() });
+      await refreshUserData();
+      toast.success("Profile updated! ✅"); setEditMode(false);
+    } catch { toast.error("Failed to update!"); }
+    finally { setSaving(false); }
+  };
 
+  const fields = [
+    { lbl:"Full Name",    editable:true,  key:"name",  val:userData?.name },
+    { lbl:"Email",        editable:false, val:userData?.email, hint:"Cannot be changed" },
+    { lbl:"Phone",        editable:true,  key:"phone", val:userData?.phone },
+    { lbl:"Department",   editable:false, val:userData?.department, hint:"Contact admin to change" },
+    { lbl:"Basic Salary", editable:false, val:`₹${userData?.salary?.toLocaleString()||"---"}`, hint:"Contact admin to change" },
+    { lbl:"Join Date",    editable:false, val:userData?.joinDate },
+  ];
 
   return (
     <EmpLayout pageTitle="My Profile">
-      <div style={styles.container}>
-        {/* Profile Card */}
-        <div style={styles.profileCard}>
-          <div style={styles.avatarBox}>
-            <div style={styles.avatar}>
-              <User size={48} color="#fff" />
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        .epp{font-family:'Plus Jakarta Sans',sans-serif;}
+        .epp-wrap{display:grid;grid-template-columns:260px 1fr;gap:20px;align-items:start;}
+
+        /* Left card */
+        .epp-left{background:#fff;border-radius:18px;padding:30px 20px;border:1px solid #f1f5f9;box-shadow:0 4px 24px rgba(0,0,0,0.04);display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;}
+        .epp-avatar-ring{width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,#06b6d4,#0891b2);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(6,182,212,0.35);font-size:38px;font-weight:800;color:#fff;}
+        .epp-name{font-size:19px;font-weight:800;color:#0f172a;margin:0;letter-spacing:-.3px;}
+        .epp-dept{font-size:13px;color:#94a3b8;margin:0;font-weight:500;}
+        .epp-badge{background:rgba(6,182,212,0.1);color:#0891b2;border:1px solid rgba(6,182,212,0.2);padding:6px 16px;border-radius:100px;font-size:12.5px;font-weight:600;}
+        .epp-divider{width:100%;height:1px;background:#f1f5f9;}
+        .epp-meta{width:100%;display:flex;flex-direction:column;gap:10px;}
+        .epp-meta-item{display:flex;justify-content:space-between;align-items:center;font-size:13px;}
+        .epp-meta-lbl{color:#94a3b8;font-weight:500;}
+        .epp-meta-val{color:#0f172a;font-weight:600;}
+
+        /* Right card */
+        .epp-right{background:#fff;border-radius:18px;padding:26px;border:1px solid #f1f5f9;box-shadow:0 4px 24px rgba(0,0,0,0.04);}
+        .epp-rhdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;}
+        .epp-rtitle{font-size:17px;font-weight:800;color:#0f172a;letter-spacing:-.3px;margin:0;}
+        .epp-edit-btn{display:flex;align-items:center;gap:7px;padding:10px 18px;background:linear-gradient(135deg,#06b6d4,#0891b2);color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700;font-size:13.5px;font-family:'Plus Jakarta Sans',sans-serif;transition:all .22s;box-shadow:0 4px 12px rgba(6,182,212,0.3);}
+        .epp-edit-btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(6,182,212,0.4);}
+        .epp-acts{display:flex;gap:8px;}
+        .epp-cancel-btn{display:flex;align-items:center;gap:6px;padding:10px 16px;background:#f8fafc;color:#64748b;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;font-weight:600;font-size:13.5px;font-family:'Plus Jakarta Sans',sans-serif;transition:all .2s;}
+        .epp-save-btn{display:flex;align-items:center;gap:6px;padding:10px 18px;background:linear-gradient(135deg,#06b6d4,#0891b2);color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700;font-size:13.5px;font-family:'Plus Jakarta Sans',sans-serif;box-shadow:0 4px 12px rgba(6,182,212,0.3);transition:all .2s;}
+        .epp-save-btn:disabled{opacity:.6;cursor:not-allowed;}
+        .epp-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+        .epp-field{display:flex;flex-direction:column;gap:7px;}
+        .epp-flbl{font-size:11.5px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;}
+        .epp-fval{font-size:15px;font-weight:600;color:#0f172a;margin:0;}
+        .epp-fhint{font-size:11px;color:#cbd5e1;margin:0;font-style:italic;}
+        .epp-inp{padding:11px 14px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:14px;font-family:'Plus Jakarta Sans',sans-serif;color:#0f172a;outline:none;transition:all .22s;background:#f8fafc;}
+        .epp-inp:focus{border-color:#06b6d4;background:#fff;box-shadow:0 0 0 4px rgba(6,182,212,0.08);}
+      `}</style>
+
+      <div className="epp">
+        <div className="epp-wrap">
+          {/* Left */}
+          <div className="epp-left">
+            <div className="epp-avatar-ring">{userData?.name?.charAt(0).toUpperCase()}</div>
+            <p className="epp-name">{userData?.name}</p>
+            <p className="epp-dept">{userData?.department} Department</p>
+            <span className="epp-badge">👤 Employee</span>
+            <div className="epp-divider"/>
+            <div className="epp-meta">
+              <div className="epp-meta-item"><span className="epp-meta-lbl">Salary</span><span className="epp-meta-val">₹{userData?.salary?.toLocaleString()}</span></div>
+              <div className="epp-meta-item"><span className="epp-meta-lbl">Joined</span><span className="epp-meta-val">{userData?.joinDate||"—"}</span></div>
+              <div className="epp-meta-item"><span className="epp-meta-lbl">Status</span><span style={{color:"#16a34a",fontWeight:600}}>🟢 Active</span></div>
             </div>
-            <h2 style={styles.name}>{userData?.name}</h2>
-            <p style={styles.dept}>{userData?.department} Department</p>
-            <span style={styles.roleBadge}>👤 Employee</span>
-          </div>
-        </div>
-
-        {/* Info Card */}
-        <div style={styles.infoCard}>
-          <div style={styles.infoHeader}>
-            <h3 style={styles.infoTitle}>Personal Information</h3>
-            {!editMode ? (
-              <button onClick={() => setEditMode(true)} style={styles.editBtn}>
-                <Pencil size={16} />
-                Edit Profile
-              </button>
-            ) : (
-              <div style={styles.editActions}>
-                <button
-                  onClick={() => setEditMode(false)}
-                  style={styles.cancelBtn}
-                >
-                  <X size={16} />
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  style={{ ...styles.saveBtn, opacity: saving ? 0.7 : 1 }}
-                >
-                  <Check size={16} />
-                  {saving ? "Saving..." : "Save"}
-                </button>
-              </div>
-            )}
           </div>
 
-          <div style={styles.fieldsGrid}>
-            <div style={styles.field}>
-              <label style={styles.fieldLabel}>Full Name</label>
-              {editMode ? (
-                <input
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  style={styles.input}
-                />
+          {/* Right */}
+          <div className="epp-right">
+            <div className="epp-rhdr">
+              <p className="epp-rtitle">Personal Information</p>
+              {!editMode ? (
+                <button className="epp-edit-btn" onClick={()=>setEditMode(true)}><Pencil size={15}/>Edit Profile</button>
               ) : (
-                <p style={styles.fieldValue}>{userData?.name || "---"}</p>
+                <div className="epp-acts">
+                  <button className="epp-cancel-btn" onClick={()=>setEditMode(false)}><X size={15}/>Cancel</button>
+                  <button className="epp-save-btn" onClick={handleSave} disabled={saving}><Check size={15}/>{saving?"Saving...":"Save"}</button>
+                </div>
               )}
             </div>
-
-            <div style={styles.field}>
-              <label style={styles.fieldLabel}>Email Address</label>
-              <p style={styles.fieldValue}>{userData?.email || "---"}</p>
-              <p style={styles.readOnly}>Email cannot be changed</p>
-            </div>
-
-            <div style={styles.field}>
-              <label style={styles.fieldLabel}>Phone Number</label>
-              {editMode ? (
-                <input
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  style={styles.input}
-                  maxLength={10}
-                  placeholder="10-digit mobile number"
-                />
-              ) : (
-                <p style={styles.fieldValue}>{userData?.phone || "---"}</p>
-              )}
-            </div>
-
-            <div style={styles.field}>
-              <label style={styles.fieldLabel}>Department</label>
-              <p style={styles.fieldValue}>{userData?.department || "---"}</p>
-              <p style={styles.readOnly}>Contact admin to change</p>
-            </div>
-
-            <div style={styles.field}>
-              <label style={styles.fieldLabel}>Basic Salary</label>
-              <p style={styles.fieldValue}>
-                ₹{userData?.salary?.toLocaleString() || "---"}
-              </p>
-              <p style={styles.readOnly}>Contact admin to change</p>
-            </div>
-
-            <div style={styles.field}>
-              <label style={styles.fieldLabel}>Join Date</label>
-              <p style={styles.fieldValue}>{userData?.joinDate || "---"}</p>
+            <div className="epp-grid">
+              {fields.map((f,i)=>(
+                <div key={i} className="epp-field">
+                  <label className="epp-flbl">{f.lbl}</label>
+                  {editMode && f.editable ? (
+                    <input className="epp-inp" value={formData[f.key]} onChange={e=>setFormData({...formData,[f.key]:e.target.value})} maxLength={f.key==="phone"?10:undefined} placeholder={f.key==="phone"?"10-digit number":""}/>
+                  ) : (
+                    <>
+                      <p className="epp-fval">{f.val||"—"}</p>
+                      {f.hint && <p className="epp-fhint">{f.hint}</p>}
+                    </>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -171,154 +129,4 @@ const EmpProfile = () => {
     </EmpLayout>
   );
 };
-
-const styles = {
-  container: {
-    display: "grid",
-    gridTemplateColumns: "280px 1fr",
-    gap: "24px",
-    alignItems: "start",
-  },
-  profileCard: {
-    background: "#fff",
-    borderRadius: "16px",
-    padding: "30px 20px",
-    boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
-  },
-  avatarBox: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: "12px",
-  },
-  avatar: {
-    width: "90px",
-    height: "90px",
-    borderRadius: "50%",
-    background: "linear-gradient(135deg, #06b6d4, #0891b2)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  name: {
-    fontSize: "20px",
-    fontWeight: "bold",
-    color: "#1e293b",
-    margin: 0,
-    textAlign: "center",
-  },
-  dept: {
-    fontSize: "14px",
-    color: "#64748b",
-    margin: 0,
-    textAlign: "center",
-  },
-  roleBadge: {
-    background: "#e0f2fe",
-    color: "#0891b2",
-    padding: "6px 16px",
-    borderRadius: "20px",
-    fontSize: "13px",
-    fontWeight: "600",
-  },
-  infoCard: {
-    background: "#fff",
-    borderRadius: "16px",
-    padding: "24px",
-    boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
-  },
-  infoHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "24px",
-  },
-  infoTitle: {
-    fontSize: "18px",
-    fontWeight: "bold",
-    color: "#1e293b",
-    margin: 0,
-  },
-  editBtn: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "10px 18px",
-    background: "linear-gradient(135deg, #06b6d4, #0891b2)",
-    color: "#fff",
-    border: "none",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "600",
-    fontSize: "14px",
-  },
-  editActions: {
-    display: "flex",
-    gap: "10px",
-  },
-  cancelBtn: {
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-    padding: "10px 16px",
-    background: "#f1f5f9",
-    color: "#64748b",
-    border: "none",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "600",
-    fontSize: "14px",
-  },
-  saveBtn: {
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-    padding: "10px 16px",
-    background: "linear-gradient(135deg, #06b6d4, #0891b2)",
-    color: "#fff",
-    border: "none",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "600",
-    fontSize: "14px",
-  },
-  fieldsGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "20px",
-  },
-  field: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-  },
-  fieldLabel: {
-    fontSize: "12px",
-    fontWeight: "600",
-    color: "#64748b",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-  },
-  fieldValue: {
-    fontSize: "15px",
-    fontWeight: "600",
-    color: "#1e293b",
-    margin: 0,
-  },
-  readOnly: {
-    fontSize: "11px",
-    color: "#94a3b8",
-    margin: 0,
-    fontStyle: "italic",
-  },
-  input: {
-    padding: "10px 14px",
-    borderRadius: "8px",
-    border: "2px solid #e2e8f0",
-    fontSize: "14px",
-    outline: "none",
-    width: "100%",
-  },
-};
-
 export default EmpProfile;

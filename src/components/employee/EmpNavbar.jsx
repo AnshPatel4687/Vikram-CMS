@@ -8,115 +8,42 @@ import NotificationBell from "../shared/NotificationBell";
 const EmpNavbar = ({ pageTitle }) => {
   const { userData, logout } = useAuth();
   const navigate = useNavigate();
-
   const handleLogout = async () => {
-    try {
-      await logout();
-      toast.success("Logged out successfully!");
-      navigate("/");
-    } catch (error) {
-      toast.error("Logout failed!");
-    }
+    try { await logout(); toast.success("Logged out!"); navigate("/"); }
+    catch { toast.error("Logout failed!"); }
   };
-
   return (
-    <div style={styles.navbar}>
-      <div style={styles.left}>
-        <h2 style={styles.title}>{pageTitle}</h2>
-      </div>
-
-      <div style={styles.right}>
-        {/* Real-time Notification Bell */}
-        <NotificationBell />
-
-        <div style={styles.userInfo}>
-          <div style={styles.avatar}>
-            <User size={18} color="#fff" />
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        .enb{height:68px;background:#fff;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:fixed;top:0;left:260px;right:0;z-index:99;font-family:'Plus Jakarta Sans',sans-serif;box-shadow:0 1px 20px rgba(0,0,0,0.04);}
+        .enb-title{font-size:19px;font-weight:800;color:#0f172a;letter-spacing:-.4px;margin:0;}
+        .enb-right{display:flex;align-items:center;gap:14px;}
+        .enb-user{display:flex;align-items:center;gap:10px;padding:7px 14px 7px 7px;border-radius:50px;background:#f8fafc;border:1px solid #e2e8f0;transition:all .2s;}
+        .enb-user:hover{background:#f1f5f9;}
+        .enb-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#06b6d4,#6366f1);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(6,182,212,0.3);}
+        .enb-uname{font-size:13.5px;font-weight:700;color:#0f172a;line-height:1;}
+        .enb-urole{font-size:11px;color:#94a3b8;line-height:1;margin-top:2px;}
+        .enb-logout{display:flex;align-items:center;gap:7px;padding:9px 16px;background:linear-gradient(135deg,#fef2f2,#fee2e2);color:#ef4444;border:1px solid #fecaca;border-radius:50px;cursor:pointer;font-weight:700;font-size:13.5px;font-family:'Plus Jakarta Sans',sans-serif;transition:all .22s;}
+        .enb-logout:hover{background:linear-gradient(135deg,#fee2e2,#fecaca);transform:translateY(-1px);box-shadow:0 4px 12px rgba(239,68,68,0.2);}
+      `}</style>
+      <div className="enb">
+        <h2 className="enb-title">{pageTitle}</h2>
+        <div className="enb-right">
+          <NotificationBell />
+          <div className="enb-user">
+            <div className="enb-avatar"><User size={16} color="#fff" /></div>
+            <div>
+              <div className="enb-uname">{userData?.name || "Employee"}</div>
+              <div className="enb-urole">{userData?.department || "Employee"}</div>
+            </div>
           </div>
-          <div>
-            <p style={styles.userName}>{userData?.name || "Employee"}</p>
-            <p style={styles.userRole}>{userData?.department || "Employee"}</p>
-          </div>
+          <button className="enb-logout" onClick={handleLogout}>
+            <LogOut size={15} /><span>Logout</span>
+          </button>
         </div>
-
-        <button onClick={handleLogout} style={styles.logoutBtn}>
-          <LogOut size={18} />
-          <span>Logout</span>
-        </button>
       </div>
-    </div>
+    </>
   );
 };
-
-const styles = {
-  navbar: {
-    height: "70px",
-    background: "#fff",
-    borderBottom: "1px solid #e2e8f0",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "0 30px",
-    position: "fixed",
-    top: 0,
-    left: "260px",
-    right: 0,
-    zIndex: 99,
-    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-  },
-  left: {
-    display: "flex",
-    alignItems: "center",
-  },
-  title: {
-    fontSize: "20px",
-    fontWeight: "bold",
-    color: "#1e293b",
-    margin: 0,
-  },
-  right: {
-    display: "flex",
-    alignItems: "center",
-    gap: "16px",
-  },
-  userInfo: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-  },
-  avatar: {
-    width: "38px",
-    height: "38px",
-    borderRadius: "50%",
-    background: "linear-gradient(135deg, #06b6d4, #0891b2)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  userName: {
-    fontSize: "14px",
-    fontWeight: "600",
-    color: "#1e293b",
-    margin: 0,
-  },
-  userRole: {
-    fontSize: "12px",
-    color: "#64748b",
-    margin: 0,
-  },
-  logoutBtn: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "10px 18px",
-    background: "#fee2e2",
-    color: "#ef4444",
-    border: "none",
-    borderRadius: "10px",
-    cursor: "pointer",
-    fontWeight: "600",
-    fontSize: "14px",
-  },
-};
-
 export default EmpNavbar;
