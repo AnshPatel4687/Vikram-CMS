@@ -38,6 +38,7 @@ const EmpDashboard = () => {
   ];
 
   const infoFields = [
+    { lbl:"Employee ID", val:userData?.employeeId },
     { lbl:"Full Name",  val:userData?.name },
     { lbl:"Email",      val:userData?.email },
     { lbl:"Department", val:userData?.department },
@@ -90,7 +91,7 @@ const EmpDashboard = () => {
         <div className={`edp-banner ${visible?"vis":""}`}>
           <div className="edp-blob1"/><div className="edp-blob2"/><div className="edp-dots"/>
           <div style={{position:"relative"}}>
-            <div className="edp-tag">🟢 Active Employee</div>
+            <div className="edp-tag">🟢 {userData?.employeeId || "Active Employee"}</div>
             <h2 className="edp-banner-title">Welcome back, {firstName}! 👋</h2>
             <p className="edp-banner-sub">{userData?.department} Department &nbsp;•&nbsp; {dateStr}</p>
           </div>

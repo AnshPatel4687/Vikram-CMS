@@ -8,6 +8,7 @@ import ExportButton from "../../components/shared/ExportButton";
 import { exportEmployeesPDF, exportEmployeesExcel } from "../../utils/exportUtils";
 import { UserPlus, Pencil, Trash2, X, Check } from "lucide-react";
 import toast from "react-hot-toast";
+import { generateEmployeeId } from "../../utils/generateEmployeeId";
 
 const departments = ["IT","HR","Finance","Marketing","Operations","Sales"];
 
@@ -28,7 +29,14 @@ const Employees = () => {
   const fetchEmployees = async () => {
     try {
       const snap = await getDocs(query(collection(db,"users"), where("role","==","employee")));
-      setEmployees(snap.docs.map(d => ({ id:d.id, ...d.data() })));
+      const list = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      // Sort by employeeId numerically: E0001 < E0002 < E0003 ...
+      list.sort((a, b) => {
+        const numA = parseInt((a.employeeId||"E9999").replace(/\D/g,""), 10);
+        const numB = parseInt((b.employeeId||"E9999").replace(/\D/g,""), 10);
+        return numA - numB;
+      });
+      setEmployees(list);
     } catch { toast.error("Error fetching employees!"); }
     finally { setLoading(false); setTimeout(()=>setVisible(true),60); }
   };
@@ -66,14 +74,15 @@ const Employees = () => {
   const handleAdd = async () => {
     if (!validateForm()) return;
     try {
+      const employeeId = await generateEmployeeId();
       const result = await createUserWithEmailAndPassword(secondaryAuth, formData.email, formData.password);
       await setDoc(doc(db,"users",result.user.uid), {
         name:formData.name.trim(), email:formData.email.trim(),
         department:formData.department, salary:Number(formData.salary),
         phone:formData.phone.trim(), joinDate:formData.joinDate,
-        role:"employee", addedByAdmin:true,
+        role:"employee", addedByAdmin:true, employeeId,
       });
-      toast.success("Employee added! ✅");
+      toast.success(`Employee added! ID: ${employeeId} ✅`);
       setShowModal(false); resetForm(); fetchEmployees();
     } catch(e) {
       toast.error(e.code==="auth/email-already-in-use" ? "Email already exists!" : e.message);
@@ -100,8 +109,9 @@ const Employees = () => {
     if (!roleForm.department)                    { toast.error("Select department!"); return; }
     if (!roleForm.salary||Number(roleForm.salary)<1000) { toast.error("Enter valid salary!"); return; }
     try {
-      await updateDoc(doc(db,"users",selectedPending.id), { role:roleForm.role, department:roleForm.department, salary:Number(roleForm.salary), joinDate:new Date().toISOString().split("T")[0] });
-      toast.success(`Approved as ${roleForm.role}! ✅`);
+      const employeeId = await generateEmployeeId();
+      await updateDoc(doc(db,"users",selectedPending.id), { role:roleForm.role, department:roleForm.department, salary:Number(roleForm.salary), joinDate:new Date().toISOString().split("T")[0], employeeId });
+      toast.success(`Approved as ${roleForm.role}! ID: ${employeeId} ✅`);
       setShowRoleModal(false); setSelectedPending(null); setRoleForm({department:"",salary:"",role:"employee"});
       fetchEmployees(); fetchPendingUsers();
     } catch { toast.error("Failed to approve!"); }
@@ -229,12 +239,12 @@ const Employees = () => {
             ) : (
               <table className="ep-tbl">
                 <thead className="ep-thead">
-                  <tr><th className="ep-th">#</th><th className="ep-th">Name</th><th className="ep-th">Email</th><th className="ep-th">Department</th><th className="ep-th">Phone</th><th className="ep-th">Salary</th><th className="ep-th">Join Date</th><th className="ep-th">Actions</th></tr>
+                  <tr><th className="ep-th">Emp ID</th><th className="ep-th">Name</th><th className="ep-th">Email</th><th className="ep-th">Department</th><th className="ep-th">Phone</th><th className="ep-th">Salary</th><th className="ep-th">Join Date</th><th className="ep-th">Actions</th></tr>
                 </thead>
                 <tbody>
                   {employees.map((emp,i)=>(
                     <tr key={emp.id} className="ep-tr">
-                      <td className="ep-td">{i+1}</td>
+                      <td className="ep-td"><span style={{background:"rgba(99,102,241,0.1)",color:"#6366f1",padding:"3px 8px",borderRadius:"6px",fontSize:"12px",fontWeight:"700",fontFamily:"monospace",letterSpacing:".3px"}}>{emp.employeeId||"—"}</span></td>
                       <td className="ep-td"><div className="ep-emp-name"><div className="ep-avatar">{emp.name?.charAt(0).toUpperCase()}</div><span className="ep-name-text">{emp.name}</span></div></td>
                       <td className="ep-td">{emp.email}</td>
                       <td className="ep-td"><span className="ep-dept">{emp.department}</span></td>

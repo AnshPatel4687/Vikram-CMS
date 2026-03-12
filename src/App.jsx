@@ -16,6 +16,7 @@ import Payroll from "./pages/admin/Payroll";
 import Reports from "./pages/admin/Reports";
 import Leaves from "./pages/admin/Leaves";
 import Settings from "./pages/admin/Settings";
+import FixEmployeeIds from "./pages/admin/FixEmployeeIds";
 
 // Employee Pages
 import EmpDashboard from "./pages/employee/EmpDashboard";
@@ -43,6 +44,7 @@ function App() {
           <Route path="/admin/reports" element={<AdminRoute><Reports /></AdminRoute>} />
           <Route path="/admin/leaves" element={<AdminRoute><Leaves /></AdminRoute>} />
           <Route path="/admin/settings" element={<AdminRoute><Settings /></AdminRoute>} />
+          <Route path="/admin/fix-ids" element={<AdminRoute><FixEmployeeIds /></AdminRoute>} />
 
           {/* Employee Routes */}
           <Route path="/employee/dashboard" element={<EmployeeRoute><EmpDashboard /></EmployeeRoute>} />

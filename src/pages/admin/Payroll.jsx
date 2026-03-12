@@ -22,7 +22,13 @@ const Payroll = () => {
   const fetchEmployees = async () => {
     try {
       const snap = await getDocs(query(collection(db,"users"), where("role","==","employee")));
-      setEmployees(snap.docs.map(d=>({id:d.id,...d.data()})));
+      const list = snap.docs.map(d=>({id:d.id,...d.data()}));
+      list.sort((a,b) => {
+        const nA = parseInt((a.employeeId||"E9999").replace(/\D/g,""),10);
+        const nB = parseInt((b.employeeId||"E9999").replace(/\D/g,""),10);
+        return nA - nB;
+      });
+      setEmployees(list);
     } catch { toast.error("Error fetching employees!"); }
     finally { setTimeout(()=>setVisible(true),60); }
   };
@@ -56,7 +62,7 @@ const Payroll = () => {
     setSaving(true);
     try {
       const bonus=Number(formData.bonus)||0, deduction=Number(formData.deduction)||0;
-      await setDoc(doc(db,"payroll",`${selectedEmp.id}_${selectedMonth}`), { userId:selectedEmp.id, userName:selectedEmp.name, department:selectedEmp.department, month:selectedMonth, basicSalary:selectedEmp.salary, bonus, deduction, netSalary:selectedEmp.salary+bonus-deduction, note:formData.note||"", status:"pending" });
+      await setDoc(doc(db,"payroll",`${selectedEmp.id}_${selectedMonth}`), { userId:selectedEmp.id, employeeId:selectedEmp.employeeId||"", userName:selectedEmp.name, department:selectedEmp.department, month:selectedMonth, basicSalary:selectedEmp.salary, bonus, deduction, netSalary:selectedEmp.salary+bonus-deduction, note:formData.note||"", status:"pending" });
       toast.success("Payroll saved! ✅"); setShowModal(false); fetchPayrolls(selectedMonth);
     } catch { toast.error("Failed to save!"); }
     finally { setSaving(false); }
@@ -178,7 +184,7 @@ const Payroll = () => {
           ) : (
             <table className="prp-tbl">
               <thead className="prp-thead">
-                <tr><th className="prp-th">#</th><th className="prp-th">Employee</th><th className="prp-th">Department</th><th className="prp-th">Basic</th><th className="prp-th">Bonus</th><th className="prp-th">Deduction</th><th className="prp-th">Net Salary</th><th className="prp-th">Status</th><th className="prp-th">Actions</th></tr>
+                <tr><th className="prp-th">Emp ID</th><th className="prp-th">Employee</th><th className="prp-th">Department</th><th className="prp-th">Basic</th><th className="prp-th">Bonus</th><th className="prp-th">Deduction</th><th className="prp-th">Net Salary</th><th className="prp-th">Status</th><th className="prp-th">Actions</th></tr>
               </thead>
               <tbody>
                 {employees.map((emp,i)=>{
@@ -186,8 +192,8 @@ const Payroll = () => {
                   const isPaid = p?.status==="paid";
                   return (
                     <tr key={emp.id} className="prp-tr">
-                      <td className="prp-td">{i+1}</td>
-                      <td className="prp-td"><div className="prp-emp"><div className="prp-avatar">{emp.name?.charAt(0).toUpperCase()}</div><span style={{fontWeight:600,color:"#0f172a"}}>{emp.name}</span></div></td>
+                      <td className="prp-td"><span style={{background:"rgba(99,102,241,0.1)",color:"#6366f1",padding:"3px 8px",borderRadius:"6px",fontSize:"12px",fontWeight:"800",fontFamily:"monospace"}}>{emp.employeeId||"—"}</span></td>
+                      <td className="prp-td"><div className="prp-emp"><div className="prp-avatar">{emp.name?.charAt(0).toUpperCase()}</div><div><span style={{fontWeight:600,color:"#0f172a"}}>{emp.name}</span><p style={{fontSize:"12px",color:"#94a3b8",margin:0}}>{emp.email}</p></div></div></td>
                       <td className="prp-td"><span className="prp-dept">{emp.department}</span></td>
                       <td className="prp-td">₹{emp.salary?.toLocaleString()}</td>
                       <td className="prp-td">{p ? <span style={{color:"#16a34a",fontWeight:600}}>+₹{p.bonus?.toLocaleString()}</span> : <span className="prp-dash">—</span>}</td>

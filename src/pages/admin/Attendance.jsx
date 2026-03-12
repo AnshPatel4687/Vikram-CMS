@@ -20,7 +20,13 @@ const Attendance = () => {
   const fetchEmployees = async () => {
     try {
       const snap = await getDocs(query(collection(db,"users"), where("role","==","employee")));
-      setEmployees(snap.docs.map(d => ({ id:d.id, ...d.data() })));
+      const list = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      list.sort((a,b) => {
+        const nA = parseInt((a.employeeId||"E9999").replace(/\D/g,""),10);
+        const nB = parseInt((b.employeeId||"E9999").replace(/\D/g,""),10);
+        return nA - nB;
+      });
+      setEmployees(list);
     } catch { toast.error("Error fetching employees!"); }
     finally { setLoading(false); setTimeout(()=>setVisible(true),60); }
   };
@@ -43,7 +49,7 @@ const Attendance = () => {
       for (const emp of employees) {
         const status = attendanceData[emp.id];
         if (status) {
-          await setDoc(doc(db,"attendance",`${emp.id}_${selectedDate}`), { userId:emp.id, userName:emp.name, department:emp.department, date:selectedDate, status });
+          await setDoc(doc(db,"attendance",`${emp.id}_${selectedDate}`), { userId:emp.id, userName:emp.name, employeeId:emp.employeeId||"", department:emp.department, date:selectedDate, status });
           await notifyEmployee(emp.id,"Attendance Marked 📅",`Aaj (${selectedDate}) tumhari attendance "${status}" mark hui!`,"attendance","/employee/attendance");
         }
       }
@@ -147,7 +153,7 @@ const Attendance = () => {
           ) : (
             <table className="ap-tbl">
               <thead className="ap-thead">
-                <tr><th className="ap-th">#</th><th className="ap-th">Employee</th><th className="ap-th">Department</th><th className="ap-th">Current Status</th><th className="ap-th">Mark Attendance</th></tr>
+                <tr><th className="ap-th">Emp ID</th><th className="ap-th">Employee</th><th className="ap-th">Department</th><th className="ap-th">Current Status</th><th className="ap-th">Mark Attendance</th></tr>
               </thead>
               <tbody>
                 {employees.map((emp,i)=>{
@@ -155,7 +161,7 @@ const Attendance = () => {
                   const statusColor = s==="present"?{bg:"rgba(22,163,74,0.1)",clr:"#16a34a"}:s==="absent"?{bg:"rgba(239,68,68,0.1)",clr:"#ef4444"}:s==="late"?{bg:"rgba(217,119,6,0.1)",clr:"#d97706"}:null;
                   return (
                     <tr key={emp.id} className="ap-tr">
-                      <td className="ap-td">{i+1}</td>
+                      <td className="ap-td"><span style={{background:"rgba(99,102,241,0.1)",color:"#6366f1",padding:"3px 8px",borderRadius:"6px",fontSize:"12px",fontWeight:"800",fontFamily:"monospace"}}>{emp.employeeId||"—"}</span></td>
                       <td className="ap-td">
                         <div className="ap-emp">
                           <div className="ap-avatar">{emp.name?.charAt(0).toUpperCase()}</div>

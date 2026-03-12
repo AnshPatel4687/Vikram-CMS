@@ -43,7 +43,7 @@ const LeaveRequest = () => {
     if (!validate()) return;
     setSubmitting(true);
     try {
-      await addDoc(collection(db,"leaves"), { userId:user.uid, userName:userData?.name, department:userData?.department, type:form.type, from:form.from, to:form.to, days:calcDays(), reason:form.reason.trim(), status:"pending", createdAt:new Date().toISOString() });
+      await addDoc(collection(db,"leaves"), { userId:user.uid, userName:userData?.name, employeeId:userData?.employeeId||"", department:userData?.department, type:form.type, from:form.from, to:form.to, days:calcDays(), reason:form.reason.trim(), status:"pending", createdAt:new Date().toISOString() });
       const adminSnap = await getDocs(query(collection(db,"users"), where("role","==","admin")));
       if (!adminSnap.empty) {
         await addDoc(collection(db,"notifications"), { userId:adminSnap.docs[0].id, title:"New Leave Request 📋", message:`${userData?.name} ne ${form.type} leave apply ki hai (${calcDays()} days)`, type:"leave", read:false, createdAt:new Date().toISOString() });

@@ -75,7 +75,7 @@ const EmpSalary = () => {
         <div className={`esp-banner ${visible?"vis":""}`}>
           <div className="esp-banner-blob"/>
           <div style={{position:"relative"}}><p className="esp-banner-lbl">Basic Monthly Salary</p><p className="esp-banner-val">₹{userData?.salary?.toLocaleString()||"0"}</p></div>
-          <div style={{textAlign:"right",position:"relative"}}><p className="esp-banner-lbl">Department</p><p className="esp-banner-dept">{userData?.department||"—"}</p></div>
+          <div style={{textAlign:"right",position:"relative"}}><p className="esp-banner-lbl">Employee ID</p><p className="esp-banner-dept" style={{fontFamily:"monospace",letterSpacing:".5px"}}>{userData?.employeeId||"—"}</p><p className="esp-banner-lbl" style={{marginTop:6}}>{userData?.department||"—"}</p></div>
         </div>
         <div className={`esp-stats ${visible?"vis":""}`}>
           {[{val:`₹${totalEarned.toLocaleString()}`,lbl:"Total Earned",clr:"#6366f1"},{val:`₹${totalBonus.toLocaleString()}`,lbl:"Total Bonus",clr:"#10b981"},{val:`₹${totalDeduction.toLocaleString()}`,lbl:"Total Deduction",clr:"#ef4444"},{val:payrolls.length,lbl:"Total Months",clr:"#f59e0b"}].map((s,i)=>(

@@ -29,7 +29,13 @@ const Projects = () => {
   const fetchEmployees = async () => {
     try {
       const snap = await getDocs(query(collection(db,"users"), where("role","==","employee")));
-      setEmployees(snap.docs.map(d => ({ id:d.id, ...d.data() })));
+      const list = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      list.sort((a,b) => {
+        const nA = parseInt((a.employeeId||"E9999").replace(/\D/g,""),10);
+        const nB = parseInt((b.employeeId||"E9999").replace(/\D/g,""),10);
+        return nA - nB;
+      });
+      setEmployees(list);
     } catch { toast.error("Error fetching employees!"); }
   };
   useEffect(() => { fetchProjects(); fetchEmployees(); }, []);
@@ -71,7 +77,11 @@ const Projects = () => {
   };
 
   const statusStyle = s => ({ active:{ bg:"rgba(16,185,129,0.1)", clr:"#059669" }, completed:{ bg:"rgba(59,130,246,0.1)", clr:"#2563eb" }, "on-hold":{ bg:"rgba(245,158,11,0.1)", clr:"#d97706" } }[s] || { bg:"#f1f5f9", clr:"#64748b" });
-  const getEmpNames = ids => !ids?.length ? "None" : ids.map(id => employees.find(e=>e.id===id)?.name||"Unknown").join(", ");
+  const getEmpNames = ids => !ids?.length ? "None" : ids.map(id => {
+    const e = employees.find(e=>e.id===id);
+    if (!e) return "Unknown";
+    return e.employeeId ? `${e.employeeId} - ${e.name}` : e.name;
+  }).join(", ");
 
   return (
     <AdminLayout pageTitle="Projects">
@@ -219,7 +229,7 @@ const Projects = () => {
                   <div className="pp-emp-grid">
                     {employees.map(emp => (
                       <div key={emp.id} className={`pp-chip ${formData.assignedTo.includes(emp.id)?"on":""}`} onClick={()=>toggleEmp(emp.id)}>
-                        {formData.assignedTo.includes(emp.id)?"✓ ":""}{emp.name}
+                        {formData.assignedTo.includes(emp.id)?"✓ ":""}{emp.employeeId ? `${emp.employeeId} - ` : ""}{emp.name}
                       </div>
                     ))}
                   </div>

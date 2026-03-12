@@ -10,15 +10,23 @@ import { Check, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 const Leaves = () => {
-  const [leaves, setLeaves]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter]   = useState("all");
-  const [visible, setVisible] = useState(false);
+  const [leaves, setLeaves]     = useState([]);
+  const [usersMap, setUsersMap] = useState({}); // uid -> {employeeId, name}
+  const [loading, setLoading]   = useState(true);
+  const [filter, setFilter]     = useState("all");
+  const [visible, setVisible]   = useState(false);
 
   const fetchLeaves = async () => {
     try {
-      const snap = await getDocs(collection(db,"leaves"));
-      setLeaves(snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)));
+      const [leavesSnap, usersSnap] = await Promise.all([
+        getDocs(collection(db,"leaves")),
+        getDocs(collection(db,"users")),
+      ]);
+      // Build uid -> employeeId map
+      const map = {};
+      usersSnap.docs.forEach(d => { map[d.id] = { employeeId: d.data().employeeId||"—", name: d.data().name }; });
+      setUsersMap(map);
+      setLeaves(leavesSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)));
     } catch { toast.error("Error fetching leaves!"); }
     finally { setLoading(false); setTimeout(()=>setVisible(true),60); }
   };
@@ -134,14 +142,15 @@ const Leaves = () => {
           ) : (
             <table className="lp-tbl">
               <thead className="lp-thead">
-                <tr><th className="lp-th">#</th><th className="lp-th">Employee</th><th className="lp-th">Dept</th><th className="lp-th">Type</th><th className="lp-th">From</th><th className="lp-th">To</th><th className="lp-th">Days</th><th className="lp-th">Reason</th><th className="lp-th">Status</th><th className="lp-th">Actions</th></tr>
+                <tr><th className="lp-th">Emp ID</th><th className="lp-th">Employee</th><th className="lp-th">Dept</th><th className="lp-th">Type</th><th className="lp-th">From</th><th className="lp-th">To</th><th className="lp-th">Days</th><th className="lp-th">Reason</th><th className="lp-th">Status</th><th className="lp-th">Actions</th></tr>
               </thead>
               <tbody>
                 {filteredLeaves.map((l,i)=>{
                   const sc = l.status==="approved"?{bg:"rgba(22,163,74,0.1)",clr:"#16a34a",ic:"✅"}:l.status==="rejected"?{bg:"rgba(239,68,68,0.1)",clr:"#ef4444",ic:"❌"}:{bg:"rgba(245,158,11,0.1)",clr:"#d97706",ic:"⏳"};
+                  const empId = l.employeeId || usersMap[l.userId]?.employeeId || "—";
                   return (
                     <tr key={l.id} className="lp-tr">
-                      <td className="lp-td">{i+1}</td>
+                      <td className="lp-td"><span style={{background:"rgba(99,102,241,0.1)",color:"#6366f1",padding:"3px 8px",borderRadius:"6px",fontSize:"12px",fontWeight:"800",fontFamily:"monospace"}}>{empId}</span></td>
                       <td className="lp-td"><div className="lp-emp"><div className="lp-avatar">{l.userName?.charAt(0).toUpperCase()}</div><span style={{fontWeight:600,color:"#0f172a"}}>{l.userName}</span></div></td>
                       <td className="lp-td"><span className="lp-dept">{l.department}</span></td>
                       <td className="lp-td"><span className="lp-type">{l.type}</span></td>
