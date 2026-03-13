@@ -68,24 +68,19 @@ export const exportToPDF = async ({
   const WHITE = [255, 255, 255];
   const BGPAGE = [245, 247, 250];
 
-  // ── Page background ───────────────────────────────────────────────────────
   doc.setFillColor(...BGPAGE);
   doc.rect(0, 0, W, H, "F");
 
-  // ── Top accent bar ────────────────────────────────────────────────────────
   doc.setFillColor(...A);
   doc.rect(0, 0, W, 3, "F");
 
-  // ── Header block ─────────────────────────────────────────────────────────
   const HDR_H = 38;
   doc.setFillColor(...WHITE);
   doc.rect(0, 3, W, HDR_H, "F");
 
-  // Left accent sidebar
   doc.setFillColor(...A);
   doc.rect(0, 3, 5, HDR_H, "F");
 
-  // Company logo badge
   doc.setFillColor(...A);
   doc.roundedRect(12, 9, 22, 22, 3, 3, "F");
   doc.setFillColor(...lighten(A, 80));
@@ -95,13 +90,11 @@ export const exportToPDF = async ({
   doc.setTextColor(...WHITE);
   doc.text("CMS", 23, 24, { align: "center" });
 
-  // Company label
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
   doc.setTextColor(...GRAY);
   doc.text("COMPANY MANAGEMENT SYSTEM", 40, 14);
 
-  // Report type pill
   doc.setFillColor(...AL);
   doc.roundedRect(40, 16, 54, 6, 2, 2, "F");
   doc.setFont("helvetica", "bold");
@@ -109,24 +102,20 @@ export const exportToPDF = async ({
   doc.setTextColor(...A);
   doc.text(reportType, 67, 20.5, { align: "center" });
 
-  // Main title
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
   doc.setTextColor(...SLATE);
   doc.text(title, 40, 31);
 
-  // Thin divider
   doc.setDrawColor(...LGRAY);
   doc.setLineWidth(0.35);
   doc.line(40, 34, W - 10, 34);
 
-  // Subtitle
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(...GRAY);
   doc.text(subtitle || "All records  •  CompanyMS", 40, 38.5);
 
-  // Right date block
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
   const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
@@ -147,7 +136,6 @@ export const exportToPDF = async ({
 
   let yPos = 3 + HDR_H + 6;
 
-  // ── Stats Cards ───────────────────────────────────────────────────────────
   if (stats.length > 0) {
     const CARD_GAP = 5;
     const CARD_H   = 24;
@@ -156,26 +144,21 @@ export const exportToPDF = async ({
     stats.forEach((stat, i) => {
       const x = 10 + i * (CARD_W + CARD_GAP);
 
-      // Shadow
       doc.setFillColor(210, 215, 225);
       doc.roundedRect(x + 0.8, yPos + 0.8, CARD_W, CARD_H, 3, 3, "F");
 
-      // Card bg
       doc.setFillColor(...WHITE);
       doc.roundedRect(x, yPos, CARD_W, CARD_H, 3, 3, "F");
 
-      // Top accent strip (simulate top-only rounded)
       doc.setFillColor(...A);
       doc.roundedRect(x, yPos, CARD_W, 4, 3, 3, "F");
       doc.rect(x, yPos + 2, CARD_W, 2, "F");
 
-      // Value
       doc.setFont("helvetica", "bold");
       doc.setFontSize(13);
       doc.setTextColor(...SLATE);
       doc.text(String(stat.value), x + CARD_W / 2, yPos + 14.5, { align: "center" });
 
-      // Label
       doc.setFont("helvetica", "normal");
       doc.setFontSize(6.2);
       doc.setTextColor(...GRAY);
@@ -185,7 +168,6 @@ export const exportToPDF = async ({
     yPos += CARD_H + 7;
   }
 
-  // ── Section label ─────────────────────────────────────────────────────────
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7);
   doc.setTextColor(...GRAY);
@@ -195,7 +177,6 @@ export const exportToPDF = async ({
   doc.line(32, yPos + 1.5, W - 10, yPos + 1.5);
   yPos += 6;
 
-  // ── Table ─────────────────────────────────────────────────────────────────
   doc.autoTable({
     startY: yPos,
     head: [headers],
@@ -219,20 +200,15 @@ export const exportToPDF = async ({
       halign: "left",
       cellPadding: { top: 6, bottom: 6, left: 7, right: 7 },
     },
-    alternateRowStyles: {
-      fillColor: [250, 251, 253],
-    },
-    bodyStyles: {
-      fillColor: WHITE,
-    },
+    alternateRowStyles: { fillColor: [250, 251, 253] },
+    bodyStyles: { fillColor: WHITE },
     columnStyles: {
-      0: { halign: "center", cellWidth: 12 },
+      0: { halign: "center", cellWidth: 18, fontStyle: "bold" },
     },
     didDrawPage: (data) => {
       const pg = data.pageNumber;
       const total = doc.internal.getNumberOfPages();
 
-      // Footer
       doc.setFillColor(...WHITE);
       doc.rect(0, H - 12, W, 12, "F");
       doc.setFillColor(...A);
@@ -273,6 +249,7 @@ export const exportToExcel = async (filename, sheetName, headers, rows) => {
 
 // ─── PAGE-SPECIFIC EXPORTS ───────────────────────────────────────────────────
 
+// ── Admin: Employees ─────────────────────────────────────────────────────────
 export const exportEmployeesPDF = (employees) => {
   const d = (dept) => employees.filter((e) => e.department === dept).length;
   return exportToPDF({
@@ -289,10 +266,15 @@ export const exportEmployeesPDF = (employees) => {
       { label: "Sales",           value: d("Sales") },
       { label: "Operations",      value: d("Operations") },
     ],
-    headers: ["#", "Name", "Email", "Department", "Phone", "Salary (Rs.)", "Join Date"],
-    rows: employees.map((e, i) => [
-      i + 1, e.name, e.email, e.department, e.phone,
-      `Rs. ${Number(e.salary).toLocaleString("en-IN")}`, e.joinDate,
+    headers: ["Emp ID", "Name", "Email", "Department", "Phone", "Salary (Rs.)", "Join Date"],
+    rows: employees.map((e) => [
+      e.employeeId || "—",
+      e.name,
+      e.email,
+      e.department,
+      e.phone,
+      `Rs. ${Number(e.salary).toLocaleString("en-IN")}`,
+      e.joinDate,
     ]),
   });
 };
@@ -301,13 +283,28 @@ export const exportEmployeesExcel = (employees) =>
   exportToExcel(
     `employees_${new Date().toISOString().slice(0, 10)}`,
     "Employees",
-    ["#", "Name", "Email", "Department", "Phone", "Salary (Rs.)", "Join Date"],
-    employees.map((e, i) => [i + 1, e.name, e.email, e.department, e.phone, Number(e.salary), e.joinDate])
+    ["Emp ID", "Name", "Email", "Department", "Phone", "Salary (Rs.)", "Join Date"],
+    employees.map((e) => [
+      e.employeeId || "—",
+      e.name,
+      e.email,
+      e.department,
+      e.phone,
+      Number(e.salary),
+      e.joinDate,
+    ])
   );
 
+// ── Admin: Projects ───────────────────────────────────────────────────────────
 export const exportProjectsPDF = (projects, employees) => {
   const getNames = (ids) =>
-    (ids || []).map((id) => employees.find((e) => e.id === id)?.name || "Unknown").join(", ") || "None";
+    (ids || [])
+      .map((id) => {
+        const e = employees.find((e) => e.id === id);
+        return e ? (e.employeeId ? `${e.employeeId} - ${e.name}` : e.name) : "Unknown";
+      })
+      .join(", ") || "None";
+
   const s = (st) => projects.filter((p) => p.status === st).length;
   return exportToPDF({
     filename: `projects_${new Date().toISOString().slice(0, 10)}`,
@@ -323,16 +320,25 @@ export const exportProjectsPDF = (projects, employees) => {
     ],
     headers: ["#", "Project Name", "Description", "Status", "Deadline", "Assigned To"],
     rows: projects.map((p, i) => [
-      i + 1, p.name,
+      i + 1,
+      p.name,
       p.description?.length > 55 ? p.description.slice(0, 55) + "…" : p.description,
-      p.status, p.deadline, getNames(p.assignedTo),
+      p.status,
+      p.deadline,
+      getNames(p.assignedTo),
     ]),
   });
 };
 
 export const exportProjectsExcel = (projects, employees) => {
   const getNames = (ids) =>
-    (ids || []).map((id) => employees.find((e) => e.id === id)?.name || "Unknown").join(", ") || "None";
+    (ids || [])
+      .map((id) => {
+        const e = employees.find((e) => e.id === id);
+        return e ? (e.employeeId ? `${e.employeeId} - ${e.name}` : e.name) : "Unknown";
+      })
+      .join(", ") || "None";
+
   return exportToExcel(
     `projects_${new Date().toISOString().slice(0, 10)}`,
     "Projects",
@@ -341,6 +347,7 @@ export const exportProjectsExcel = (projects, employees) => {
   );
 };
 
+// ── Admin: Attendance ─────────────────────────────────────────────────────────
 export const exportAttendancePDF = (employees, attendanceData, selectedDate) => {
   const c = (s) => Object.values(attendanceData).filter((v) => v === s).length;
   return exportToPDF({
@@ -350,14 +357,19 @@ export const exportAttendancePDF = (employees, attendanceData, selectedDate) => 
     subtitle: `Date: ${selectedDate}  •  ${employees.length} employees`,
     accentColor: "#16a34a",
     stats: [
-      { label: "Present",     value: c("present") },
-      { label: "Absent",      value: c("absent") },
-      { label: "Late",        value: c("late") },
-      { label: "Not Marked",  value: employees.length - Object.keys(attendanceData).length },
-      { label: "Total",       value: employees.length },
+      { label: "Present",    value: c("present") },
+      { label: "Absent",     value: c("absent") },
+      { label: "Late",       value: c("late") },
+      { label: "Not Marked", value: employees.length - Object.keys(attendanceData).length },
+      { label: "Total",      value: employees.length },
     ],
-    headers: ["#", "Employee Name", "Department", "Status"],
-    rows: employees.map((e, i) => [i + 1, e.name, e.department, attendanceData[e.id] || "Not Marked"]),
+    headers: ["Emp ID", "Employee Name", "Department", "Status"],
+    rows: employees.map((e) => [
+      e.employeeId || "—",
+      e.name,
+      e.department,
+      attendanceData[e.id] || "Not Marked",
+    ]),
   });
 };
 
@@ -365,10 +377,17 @@ export const exportAttendanceExcel = (employees, attendanceData, selectedDate) =
   exportToExcel(
     `attendance_${selectedDate}`,
     "Attendance",
-    ["#", "Employee Name", "Department", "Status", "Date"],
-    employees.map((e, i) => [i + 1, e.name, e.department, attendanceData[e.id] || "Not Marked", selectedDate])
+    ["Emp ID", "Employee Name", "Department", "Status", "Date"],
+    employees.map((e) => [
+      e.employeeId || "—",
+      e.name,
+      e.department,
+      attendanceData[e.id] || "Not Marked",
+      selectedDate,
+    ])
   );
 
+// ── Admin: Payroll ────────────────────────────────────────────────────────────
 export const exportPayrollPDF = (employees, payrolls, selectedMonth) => {
   const paid    = Object.values(payrolls).filter((p) => p.status === "paid").length;
   const pending = Object.values(payrolls).filter((p) => p.status === "pending").length;
@@ -385,11 +404,13 @@ export const exportPayrollPDF = (employees, payrolls, selectedMonth) => {
       { label: "Not Generated", value: employees.length - paid - pending },
       { label: "Total Payout",  value: `Rs. ${total.toLocaleString("en-IN")}` },
     ],
-    headers: ["#", "Employee", "Department", "Basic (Rs.)", "Bonus (Rs.)", "Deduction (Rs.)", "Net Salary (Rs.)", "Status"],
-    rows: employees.map((e, i) => {
+    headers: ["Emp ID", "Employee", "Department", "Basic (Rs.)", "Bonus (Rs.)", "Deduction (Rs.)", "Net Salary (Rs.)", "Status"],
+    rows: employees.map((e) => {
       const p = payrolls[e.id];
       return [
-        i + 1, e.name, e.department,
+        e.employeeId || "—",
+        e.name,
+        e.department,
         `Rs. ${Number(e.salary).toLocaleString("en-IN")}`,
         p ? `Rs. ${Number(p.bonus).toLocaleString("en-IN")}` : "—",
         p ? `Rs. ${Number(p.deduction).toLocaleString("en-IN")}` : "—",
@@ -404,16 +425,25 @@ export const exportPayrollExcel = (employees, payrolls, selectedMonth) =>
   exportToExcel(
     `payroll_${selectedMonth}`,
     "Payroll",
-    ["#", "Employee", "Department", "Basic Salary", "Bonus", "Deduction", "Net Salary", "Status", "Month"],
-    employees.map((e, i) => {
+    ["Emp ID", "Employee", "Department", "Basic Salary", "Bonus", "Deduction", "Net Salary", "Status", "Month"],
+    employees.map((e) => {
       const p = payrolls[e.id];
-      return [i + 1, e.name, e.department, Number(e.salary),
-        p ? Number(p.bonus) : 0, p ? Number(p.deduction) : 0,
-        p ? Number(p.netSalary) : 0, p ? p.status : "Not Generated", selectedMonth];
+      return [
+        e.employeeId || "—",
+        e.name,
+        e.department,
+        Number(e.salary),
+        p ? Number(p.bonus) : 0,
+        p ? Number(p.deduction) : 0,
+        p ? Number(p.netSalary) : 0,
+        p ? p.status : "Not Generated",
+        selectedMonth,
+      ];
     })
   );
 
-export const exportLeavesPDF = (leaves) => {
+// ── Admin: Leaves ─────────────────────────────────────────────────────────────
+export const exportLeavesPDF = (leaves, usersMap = {}) => {
   const s = (st) => leaves.filter((l) => l.status === st).length;
   return exportToPDF({
     filename: `leaves_${new Date().toISOString().slice(0, 10)}`,
@@ -427,32 +457,49 @@ export const exportLeavesPDF = (leaves) => {
       { label: "Approved", value: s("approved") },
       { label: "Rejected", value: s("rejected") },
     ],
-    headers: ["#", "Employee", "Department", "Type", "From", "To", "Days", "Reason", "Status"],
-    rows: leaves.map((l, i) => [
-      i + 1, l.userName, l.department || "—", l.type, l.from, l.to, l.days,
-      l.reason?.length > 38 ? l.reason.slice(0, 38) + "…" : l.reason, l.status,
+    headers: ["Emp ID", "Employee", "Department", "Type", "From", "To", "Days", "Reason", "Status"],
+    rows: leaves.map((l) => [
+      l.employeeId || usersMap[l.userId]?.employeeId || "—",
+      l.userName,
+      l.department || "—",
+      l.type,
+      l.from,
+      l.to,
+      l.days,
+      l.reason?.length > 35 ? l.reason.slice(0, 35) + "…" : l.reason,
+      l.status,
     ]),
   });
 };
 
-export const exportLeavesExcel = (leaves) =>
+export const exportLeavesExcel = (leaves, usersMap = {}) =>
   exportToExcel(
     `leaves_${new Date().toISOString().slice(0, 10)}`,
     "Leaves",
-    ["#", "Employee", "Department", "Type", "From", "To", "Days", "Reason", "Status"],
-    leaves.map((l, i) => [i + 1, l.userName, l.department || "—", l.type, l.from, l.to, l.days, l.reason, l.status])
+    ["Emp ID", "Employee", "Department", "Type", "From", "To", "Days", "Reason", "Status"],
+    leaves.map((l) => [
+      l.employeeId || usersMap[l.userId]?.employeeId || "—",
+      l.userName,
+      l.department || "—",
+      l.type,
+      l.from,
+      l.to,
+      l.days,
+      l.reason,
+      l.status,
+    ])
   );
 
 // ─── EMPLOYEE PANEL EXPORTS ───────────────────────────────────────────────────
 
-// ── My Projects (Employee) ───────────────────────────────────────────────────
-export const exportEmpProjectsPDF = (projects, userName) => {
+// ── My Projects (Employee) ────────────────────────────────────────────────────
+export const exportEmpProjectsPDF = (projects, userName, employeeId = "") => {
   const s = (st) => projects.filter((p) => p.status === st).length;
   return exportToPDF({
     filename: `my_projects_${new Date().toISOString().slice(0, 10)}`,
     reportType: "MY PROJECTS REPORT",
     title: "My Projects",
-    subtitle: `Employee: ${userName}  •  ${projects.length} projects assigned`,
+    subtitle: `${employeeId ? employeeId + "  •  " : ""}${userName}  •  ${projects.length} projects assigned`,
     accentColor: "#0891b2",
     stats: [
       { label: "Total Assigned", value: projects.length },
@@ -471,7 +518,7 @@ export const exportEmpProjectsPDF = (projects, userName) => {
   });
 };
 
-export const exportEmpProjectsExcel = (projects, userName) =>
+export const exportEmpProjectsExcel = (projects, userName, employeeId = "") =>
   exportToExcel(
     `my_projects_${new Date().toISOString().slice(0, 10)}`,
     "My Projects",
@@ -479,14 +526,14 @@ export const exportEmpProjectsExcel = (projects, userName) =>
     projects.map((p, i) => [i + 1, p.name, p.description, p.status, p.deadline])
   );
 
-// ── My Attendance (Employee) ─────────────────────────────────────────────────
-export const exportEmpAttendancePDF = (attendance, stats, userName) => {
+// ── My Attendance (Employee) ──────────────────────────────────────────────────
+export const exportEmpAttendancePDF = (attendance, stats, userName, employeeId = "") => {
   const pct = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
   return exportToPDF({
     filename: `my_attendance_${new Date().toISOString().slice(0, 10)}`,
     reportType: "MY ATTENDANCE REPORT",
     title: "My Attendance",
-    subtitle: `Employee: ${userName}  •  All records`,
+    subtitle: `${employeeId ? employeeId + "  •  " : ""}${userName}  •  All records`,
     accentColor: "#16a34a",
     stats: [
       { label: "Present",      value: stats.present },
@@ -504,7 +551,7 @@ export const exportEmpAttendancePDF = (attendance, stats, userName) => {
   });
 };
 
-export const exportEmpAttendanceExcel = (attendance, userName) =>
+export const exportEmpAttendanceExcel = (attendance, userName, employeeId = "") =>
   exportToExcel(
     `my_attendance_${new Date().toISOString().slice(0, 10)}`,
     "My Attendance",
@@ -517,7 +564,7 @@ export const exportEmpAttendanceExcel = (attendance, userName) =>
     ])
   );
 
-// ── My Salary (Employee) ─────────────────────────────────────────────────────
+// ── My Salary (Employee) ──────────────────────────────────────────────────────
 export const exportEmpSalaryPDF = (payrolls, userData) => {
   const totalEarned    = payrolls.filter((p) => p.status === "paid").reduce((s, p) => s + (p.netSalary || 0), 0);
   const totalBonus     = payrolls.reduce((s, p) => s + (p.bonus || 0), 0);
@@ -526,9 +573,10 @@ export const exportEmpSalaryPDF = (payrolls, userData) => {
     filename: `my_salary_${new Date().toISOString().slice(0, 10)}`,
     reportType: "MY SALARY REPORT",
     title: "My Salary History",
-    subtitle: `Employee: ${userData?.name || ""}  •  Department: ${userData?.department || ""}`,
+    subtitle: `${userData?.employeeId ? userData.employeeId + "  •  " : ""}${userData?.name || ""}  •  ${userData?.department || ""}`,
     accentColor: "#7c3aed",
     stats: [
+      { label: "Emp ID",           value: userData?.employeeId || "—" },
       { label: "Basic Salary",     value: `Rs. ${Number(userData?.salary || 0).toLocaleString("en-IN")}` },
       { label: "Total Earned",     value: `Rs. ${totalEarned.toLocaleString("en-IN")}` },
       { label: "Total Bonus",      value: `Rs. ${totalBonus.toLocaleString("en-IN")}` },
@@ -552,9 +600,10 @@ export const exportEmpSalaryExcel = (payrolls, userData) =>
   exportToExcel(
     `my_salary_${new Date().toISOString().slice(0, 10)}`,
     "My Salary",
-    ["#", "Month", "Basic Salary", "Bonus", "Deduction", "Net Salary", "Note", "Status"],
+    ["Emp ID", "Month", "Basic Salary", "Bonus", "Deduction", "Net Salary", "Note", "Status"],
     payrolls.map((p, i) => [
-      i + 1, p.month,
+      userData?.employeeId || "—",
+      p.month,
       Number(p.basicSalary),
       Number(p.bonus || 0),
       Number(p.deduction || 0),

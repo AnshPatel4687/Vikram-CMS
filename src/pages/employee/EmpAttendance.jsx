@@ -63,7 +63,7 @@ const EmpAttendance = () => {
       <div className="eap">
         <div className={`eap-hdr ${visible?"vis":""}`}>
           <div><p className="eap-title">My Attendance</p><p className="eap-sub">Your attendance record</p></div>
-          <ExportButton label="Export" onExportPDF={()=>exportEmpAttendancePDF(attendance,stats,userData?.name||user?.email)} onExportExcel={()=>exportEmpAttendanceExcel(attendance,userData?.name||user?.email)}/>
+          <ExportButton label="Export" onExportPDF={()=>exportEmpAttendancePDF(attendance,stats,userData?.name||user?.email,userData?.employeeId||"")} onExportExcel={()=>exportEmpAttendanceExcel(attendance,userData?.name||user?.email,userData?.employeeId||"")}/>
         </div>
         <div className={`eap-stats ${visible?"vis":""}`}>
           {[{val:stats.present,lbl:"Present",clr:"#16a34a"},{val:stats.absent,lbl:"Absent",clr:"#ef4444"},{val:stats.late,lbl:"Late",clr:"#d97706"},{val:`${pct}%`,lbl:"Attendance %",clr:"#6366f1"}].map((s,i)=>(

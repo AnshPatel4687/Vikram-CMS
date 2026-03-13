@@ -105,7 +105,7 @@ const Leaves = () => {
             <h3 className="lp-hdr-title">Leave Requests</h3>
             <p className="lp-hdr-sub">Manage employee leave requests</p>
           </div>
-          <ExportButton label="Export" onExportPDF={()=>exportLeavesPDF(filteredLeaves)} onExportExcel={()=>exportLeavesExcel(filteredLeaves)} />
+          <ExportButton label="Export" onExportPDF={()=>exportLeavesPDF(filteredLeaves,usersMap)} onExportExcel={()=>exportLeavesExcel(filteredLeaves,usersMap)} />
         </div>
 
         {/* Stats */}

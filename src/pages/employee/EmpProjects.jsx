@@ -54,7 +54,7 @@ const EmpProjects = () => {
       <div className="eprp">
         <div className={`eprp-hdr ${visible?"vis":""}`}>
           <div><p className="eprp-title">My Projects</p><p className="eprp-sub">Total: {projects.length} assigned</p></div>
-          <ExportButton label="Export" onExportPDF={()=>exportEmpProjectsPDF(projects,userData?.name||user?.email)} onExportExcel={()=>exportEmpProjectsExcel(projects,userData?.name||user?.email)}/>
+          <ExportButton label="Export" onExportPDF={()=>exportEmpProjectsPDF(projects,userData?.name||user?.email,userData?.employeeId||"")} onExportExcel={()=>exportEmpProjectsExcel(projects,userData?.name||user?.email,userData?.employeeId||"")}/>
         </div>
         {loading?<div className="eprp-loading"><div className="eprp-spin"/>Loading projects...</div>:projects.length===0?<div className="eprp-empty">🗂️ No projects assigned yet!</div>:(
           <div className="eprp-grid">
