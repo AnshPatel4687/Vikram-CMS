@@ -3,9 +3,12 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { secondaryAuth, db } from "../firebase/config";
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
-import { setDoc, doc } from "firebase/firestore";
-import { notifyAdmin } from "../firebase/notifications";
+import { setDoc, doc, getDocs, collection } from "firebase/firestore";
+import { notifyAllAdmins } from "../firebase/notifications";
 import toast from "react-hot-toast";
+
+// We do NOT assign EMP ID at signup — ID is assigned when admin approves.
+// This keeps IDs sequential for actual employees only.
 
 const Signup = () => {
   const [formData, setFormData] = useState({ name:"", email:"", password:"", confirmPassword:"", phone:"" });
@@ -48,7 +51,7 @@ const Signup = () => {
         joinDate: new Date().toISOString().split("T")[0],
         addedByAdmin: false, emailVerified: false, createdAt: new Date().toISOString(),
       });
-      await notifyAdmin("New User Signup 👤", `${formData.name.trim()} ne account banaya — approval pending!`, "signup", "/admin/employees");
+      await notifyAllAdmins("New User Signup 👤", `${formData.name.trim()} ne signup kiya — approval pending hai!`, "general", "/admin/employees");
       await secondaryAuth.signOut();
       toast.success("Account created! Please verify your email 📧");
       navigate("/");

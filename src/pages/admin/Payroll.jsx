@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { db } from "../../firebase/config";
 import { collection, getDocs, doc, setDoc, updateDoc, query, where } from "firebase/firestore";
+import { notifyEmployee } from "../../firebase/notifications";
 import AdminLayout from "../../components/admin/AdminLayout";
 import ExportButton from "../../components/shared/ExportButton";
 import { exportPayrollPDF, exportPayrollExcel } from "../../utils/exportUtils";
@@ -57,21 +58,63 @@ const Payroll = () => {
     if (formData.deduction && Number(formData.deduction)>selectedEmp.salary) { toast.error("Deduction > salary!"); return false; }
     return true;
   };
+
   const handleSave = async () => {
     if (!validateForm()) return;
     setSaving(true);
     try {
-      const bonus=Number(formData.bonus)||0, deduction=Number(formData.deduction)||0;
-      await setDoc(doc(db,"payroll",`${selectedEmp.id}_${selectedMonth}`), { userId:selectedEmp.id, employeeId:selectedEmp.employeeId||"", userName:selectedEmp.name, department:selectedEmp.department, month:selectedMonth, basicSalary:selectedEmp.salary, bonus, deduction, netSalary:selectedEmp.salary+bonus-deduction, note:formData.note||"", status:"pending" });
-      toast.success("Payroll saved! ✅"); setShowModal(false); fetchPayrolls(selectedMonth);
+      const bonus = Number(formData.bonus)||0;
+      const deduction = Number(formData.deduction)||0;
+      const netSalary = selectedEmp.salary + bonus - deduction;
+
+      await setDoc(doc(db,"payroll",`${selectedEmp.id}_${selectedMonth}`), {
+        userId:      selectedEmp.id,
+        employeeId:  selectedEmp.employeeId || "",
+        userName:    selectedEmp.name,
+        department:  selectedEmp.department,
+        month:       selectedMonth,
+        basicSalary: selectedEmp.salary,
+        bonus,
+        deduction,
+        netSalary,
+        note:        formData.note || "",
+        status:      "pending",
+      });
+
+      // Employee ko notify karo
+      await notifyEmployee(
+        selectedEmp.id,
+        "Salary Generated 💰",
+        `Tumhari ${selectedMonth} ki salary Rs.${netSalary.toLocaleString("en-IN")} generate ho gayi!`,
+        "payroll",
+        "/employee/salary"
+      );
+
+      toast.success("Payroll saved! ✅");
+      setShowModal(false);
+      fetchPayrolls(selectedMonth);
     } catch { toast.error("Failed to save!"); }
     finally { setSaving(false); }
   };
+
   const handleMarkPaid = async empId => {
     const p = payrolls[empId];
     if (!p) { toast.error("Generate payroll first!"); return; }
-    try { await updateDoc(doc(db,"payroll",p.id),{status:"paid"}); toast.success("Marked as paid! ✅"); fetchPayrolls(selectedMonth); }
-    catch { toast.error("Failed!"); }
+    try {
+      await updateDoc(doc(db,"payroll",p.id), { status:"paid" });
+
+      // Employee ko payment notification bhejo
+      await notifyEmployee(
+        p.userId,
+        "Salary Paid! 🎉",
+        `Tumhari ${p.month} ki salary Rs.${Number(p.netSalary).toLocaleString("en-IN")} account mein transfer ho gayi!`,
+        "payroll",
+        "/employee/salary"
+      );
+
+      toast.success("Marked as paid! ✅");
+      fetchPayrolls(selectedMonth);
+    } catch { toast.error("Failed!"); }
   };
 
   const totalPaid    = Object.values(payrolls).filter(p=>p.status==="paid").length;
@@ -162,9 +205,9 @@ const Payroll = () => {
         {/* Stats */}
         <div className={`prp-stats ${visible?"vis":""}`}>
           {[
-            { val:totalPaid,    lbl:"Paid",            clr:"#16a34a" },
-            { val:totalPending, lbl:"Pending",         clr:"#f59e0b" },
-            { val:employees.length, lbl:"Employees",   clr:"#6366f1" },
+            { val:totalPaid,    lbl:"Paid",          clr:"#16a34a" },
+            { val:totalPending, lbl:"Pending",        clr:"#f59e0b" },
+            { val:employees.length, lbl:"Employees",  clr:"#6366f1" },
             { val:`₹${totalAmount.toLocaleString()}`, lbl:"Total Amount", clr:"#06b6d4" },
           ].map((s,i)=>(
             <div className="prp-stat" key={i}>
@@ -193,7 +236,15 @@ const Payroll = () => {
                   return (
                     <tr key={emp.id} className="prp-tr">
                       <td className="prp-td"><span style={{background:"rgba(99,102,241,0.1)",color:"#6366f1",padding:"3px 8px",borderRadius:"6px",fontSize:"12px",fontWeight:"800",fontFamily:"monospace"}}>{emp.employeeId||"—"}</span></td>
-                      <td className="prp-td"><div className="prp-emp"><div className="prp-avatar">{emp.name?.charAt(0).toUpperCase()}</div><div><span style={{fontWeight:600,color:"#0f172a"}}>{emp.name}</span><p style={{fontSize:"12px",color:"#94a3b8",margin:0}}>{emp.email}</p></div></div></td>
+                      <td className="prp-td">
+                        <div className="prp-emp">
+                          <div className="prp-avatar">{emp.name?.charAt(0).toUpperCase()}</div>
+                          <div>
+                            <span style={{fontWeight:600,color:"#0f172a"}}>{emp.name}</span>
+                            <p style={{fontSize:"12px",color:"#94a3b8",margin:0}}>{emp.email}</p>
+                          </div>
+                        </div>
+                      </td>
                       <td className="prp-td"><span className="prp-dept">{emp.department}</span></td>
                       <td className="prp-td">₹{emp.salary?.toLocaleString()}</td>
                       <td className="prp-td">{p ? <span style={{color:"#16a34a",fontWeight:600}}>+₹{p.bonus?.toLocaleString()}</span> : <span className="prp-dash">—</span>}</td>

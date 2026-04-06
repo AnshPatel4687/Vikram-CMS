@@ -2,7 +2,7 @@
 import { db } from "./config";
 import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
 
-// Admin ka UID lo
+// ── Admin ka UID lo ───────────────────────────────────────────────────────────
 export const getAdminId = async () => {
   try {
     const snap = await getDocs(
@@ -16,7 +16,7 @@ export const getAdminId = async () => {
   }
 };
 
-// Notification send karo
+// ── Core: notification send karo ─────────────────────────────────────────────
 export const sendNotification = async (userId, title, message, type, link = "") => {
   try {
     await addDoc(collection(db, "notifications"), {
@@ -33,7 +33,7 @@ export const sendNotification = async (userId, title, message, type, link = "") 
   }
 };
 
-// Employee ko notification bhejo
+// ── Employee ko notification bhejo ───────────────────────────────────────────
 export const notifyEmployee = async (userId, title, message, type, link = "") => {
   try {
     await sendNotification(userId, title, message, type, link);
@@ -42,7 +42,7 @@ export const notifyEmployee = async (userId, title, message, type, link = "") =>
   }
 };
 
-// Admin ko notification bhejo
+// ── Ek admin ko notification bhejo ───────────────────────────────────────────
 export const notifyAdmin = async (title, message, type, link = "") => {
   try {
     const adminId = await getAdminId();
@@ -51,5 +51,20 @@ export const notifyAdmin = async (title, message, type, link = "") => {
     }
   } catch (error) {
     console.log("notifyAdmin error:", error);
+  }
+};
+
+// ── Saare admins ko notification bhejo ───────────────────────────────────────
+export const notifyAllAdmins = async (title, message, type, link = "") => {
+  try {
+    const snap = await getDocs(
+      query(collection(db, "users"), where("role", "==", "admin"))
+    );
+    const promises = snap.docs.map((d) =>
+      sendNotification(d.id, title, message, type, link)
+    );
+    await Promise.all(promises);
+  } catch (error) {
+    console.log("notifyAllAdmins error:", error);
   }
 };

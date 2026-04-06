@@ -6,15 +6,16 @@ import { useAuth } from "../../context/AuthContext";
 import EmpLayout from "../../components/employee/EmpLayout";
 import { Plus, X, Check } from "lucide-react";
 import toast from "react-hot-toast";
+import { notifyAllAdmins } from "../../firebase/notifications";
 
 const LeaveRequest = () => {
   const { user, userData } = useAuth();
-  const [leaves, setLeaves]       = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [visible, setVisible]     = useState(false);
-  const [showModal, setShowModal] = useState(false);
+  const [leaves, setLeaves]         = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [visible, setVisible]       = useState(false);
+  const [showModal, setShowModal]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm]           = useState({ type:"", from:"", to:"", reason:"" });
+  const [form, setForm]             = useState({ type:"", from:"", to:"", reason:"" });
 
   const fetchLeaves = async () => {
     try {
@@ -39,16 +40,38 @@ const LeaveRequest = () => {
     if (form.reason.trim().length<10)          { toast.error("Reason must be min 10 chars!"); return false; }
     return true;
   };
+
   const handleSubmit = async () => {
     if (!validate()) return;
     setSubmitting(true);
     try {
-      await addDoc(collection(db,"leaves"), { userId:user.uid, userName:userData?.name, employeeId:userData?.employeeId||"", department:userData?.department, type:form.type, from:form.from, to:form.to, days:calcDays(), reason:form.reason.trim(), status:"pending", createdAt:new Date().toISOString() });
-      const adminSnap = await getDocs(query(collection(db,"users"), where("role","==","admin")));
-      if (!adminSnap.empty) {
-        await addDoc(collection(db,"notifications"), { userId:adminSnap.docs[0].id, title:"New Leave Request 📋", message:`${userData?.name} ne ${form.type} leave apply ki hai (${calcDays()} days)`, type:"leave", read:false, createdAt:new Date().toISOString() });
-      }
-      toast.success("Leave submitted! ✅"); setShowModal(false); setForm({type:"",from:"",to:"",reason:""}); fetchLeaves();
+      // Leave save karo
+      await addDoc(collection(db,"leaves"), {
+        userId:      user.uid,
+        userName:    userData?.name,
+        employeeId:  userData?.employeeId || "",
+        department:  userData?.department,
+        type:        form.type,
+        from:        form.from,
+        to:          form.to,
+        days:        calcDays(),
+        reason:      form.reason.trim(),
+        status:      "pending",
+        createdAt:   new Date().toISOString(),
+      });
+
+      // Saare admins ko notification bhejo
+      await notifyAllAdmins(
+        "New Leave Request 📋",
+        `${userData?.name} (${userData?.employeeId || "Employee"}) ne ${form.type} apply ki — ${calcDays()} day(s) | ${form.from} to ${form.to}`,
+        "leave",
+        "/admin/leaves"
+      );
+
+      toast.success("Leave submitted! ✅");
+      setShowModal(false);
+      setForm({type:"",from:"",to:"",reason:""});
+      fetchLeaves();
     } catch { toast.error("Failed to submit!"); }
     finally { setSubmitting(false); }
   };
@@ -115,41 +138,83 @@ const LeaveRequest = () => {
           <div><p className="elp-title">My Leave Requests</p><p className="elp-sub">Apply and track your leaves</p></div>
           <button className="elp-add-btn" onClick={()=>setShowModal(true)}><Plus size={16}/>Apply Leave</button>
         </div>
+
         <div className={`elp-stats ${visible?"vis":""}`}>
           {[{val:pending,lbl:"Pending",clr:"#f59e0b"},{val:approved,lbl:"Approved",clr:"#16a34a"},{val:rejected,lbl:"Rejected",clr:"#ef4444"},{val:leaves.length,lbl:"Total",clr:"#06b6d4"}].map((s,i)=>(
-            <div className="elp-stat" key={i}><div className="elp-stat-bar" style={{background:s.clr}}/><p className="elp-stat-val">{s.val}</p><p className="elp-stat-lbl">{s.lbl}</p></div>
+            <div className="elp-stat" key={i}>
+              <div className="elp-stat-bar" style={{background:s.clr}}/>
+              <p className="elp-stat-val">{s.val}</p>
+              <p className="elp-stat-lbl">{s.lbl}</p>
+            </div>
           ))}
         </div>
+
         <div className={`elp-box ${visible?"vis":""}`}>
-          {loading?<div className="elp-loading"><div className="elp-spin"/>Loading...</div>:leaves.length===0?<div className="elp-empty">🌿 No leave requests yet!</div>:(
+          {loading ? (
+            <div className="elp-loading"><div className="elp-spin"/>Loading...</div>
+          ) : leaves.length===0 ? (
+            <div className="elp-empty">🌿 No leave requests yet!</div>
+          ) : (
             <table className="elp-tbl">
-              <thead className="elp-thead"><tr><th className="elp-th">#</th><th className="elp-th">Type</th><th className="elp-th">From</th><th className="elp-th">To</th><th className="elp-th">Days</th><th className="elp-th">Reason</th><th className="elp-th">Status</th></tr></thead>
+              <thead className="elp-thead">
+                <tr><th className="elp-th">#</th><th className="elp-th">Type</th><th className="elp-th">From</th><th className="elp-th">To</th><th className="elp-th">Days</th><th className="elp-th">Reason</th><th className="elp-th">Status</th></tr>
+              </thead>
               <tbody>
                 {leaves.map((l,i)=>{
                   const sc=l.status==="approved"?{bg:"rgba(22,163,74,0.1)",clr:"#16a34a",ic:"✅"}:l.status==="rejected"?{bg:"rgba(239,68,68,0.1)",clr:"#ef4444",ic:"❌"}:{bg:"rgba(245,158,11,0.1)",clr:"#d97706",ic:"⏳"};
-                  return <tr key={l.id} className="elp-tr"><td className="elp-td">{i+1}</td><td className="elp-td"><span className="elp-type">{l.type}</span></td><td className="elp-td">{l.from}</td><td className="elp-td">{l.to}</td><td className="elp-td">{l.days}d</td><td className="elp-td"><span className="elp-reason">{l.reason}</span></td><td className="elp-td"><span style={{background:sc.bg,color:sc.clr,padding:"4px 12px",borderRadius:"100px",fontSize:"12px",fontWeight:"700",textTransform:"capitalize"}}>{sc.ic} {l.status}</span></td></tr>;
+                  return (
+                    <tr key={l.id} className="elp-tr">
+                      <td className="elp-td">{i+1}</td>
+                      <td className="elp-td"><span className="elp-type">{l.type}</span></td>
+                      <td className="elp-td">{l.from}</td>
+                      <td className="elp-td">{l.to}</td>
+                      <td className="elp-td">{l.days}d</td>
+                      <td className="elp-td"><span className="elp-reason">{l.reason}</span></td>
+                      <td className="elp-td"><span style={{background:sc.bg,color:sc.clr,padding:"4px 12px",borderRadius:"100px",fontSize:"12px",fontWeight:"700",textTransform:"capitalize"}}>{sc.ic} {l.status}</span></td>
+                    </tr>
+                  );
                 })}
               </tbody>
             </table>
           )}
         </div>
 
-        {showModal&&(
+        {showModal && (
           <div className="elp-overlay">
             <div className="elp-modal">
-              <div className="elp-mhdr"><p className="elp-mtitle">Apply Leave</p><button className="elp-mclose" onClick={()=>setShowModal(false)}><X size={16}/></button></div>
+              <div className="elp-mhdr">
+                <p className="elp-mtitle">Apply Leave</p>
+                <button className="elp-mclose" onClick={()=>setShowModal(false)}><X size={16}/></button>
+              </div>
               <div className="elp-mbody">
-                <div className="elp-fgrp"><label className="elp-lbl">Leave Type *</label><select className="elp-inp" value={form.type} onChange={e=>setForm({...form,type:e.target.value})}><option value="">Select type</option>{leaveTypes.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
+                <div className="elp-fgrp">
+                  <label className="elp-lbl">Leave Type *</label>
+                  <select className="elp-inp" value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>
+                    <option value="">Select type</option>
+                    {leaveTypes.map(t=><option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
                 <div className="elp-fg2">
-                  <div className="elp-fgrp"><label className="elp-lbl">From Date *</label><input className="elp-inp" type="date" value={form.from} onChange={e=>setForm({...form,from:e.target.value})} min={new Date().toISOString().split("T")[0]}/></div>
-                  <div className="elp-fgrp"><label className="elp-lbl">To Date *</label><input className="elp-inp" type="date" value={form.to} onChange={e=>setForm({...form,to:e.target.value})} min={form.from||new Date().toISOString().split("T")[0]}/></div>
+                  <div className="elp-fgrp">
+                    <label className="elp-lbl">From Date *</label>
+                    <input className="elp-inp" type="date" value={form.from} onChange={e=>setForm({...form,from:e.target.value})} min={new Date().toISOString().split("T")[0]}/>
+                  </div>
+                  <div className="elp-fgrp">
+                    <label className="elp-lbl">To Date *</label>
+                    <input className="elp-inp" type="date" value={form.to} onChange={e=>setForm({...form,to:e.target.value})} min={form.from||new Date().toISOString().split("T")[0]}/>
+                  </div>
                 </div>
                 {form.from&&form.to&&<div className="elp-days-preview">📅 Total: {calcDays()} day(s)</div>}
-                <div className="elp-fgrp"><label className="elp-lbl">Reason *</label><textarea className="elp-inp" value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})} placeholder="Min 10 characters" style={{height:90,resize:"vertical"}}/></div>
+                <div className="elp-fgrp">
+                  <label className="elp-lbl">Reason *</label>
+                  <textarea className="elp-inp" value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})} placeholder="Min 10 characters" style={{height:90,resize:"vertical"}}/>
+                </div>
               </div>
               <div className="elp-mftr">
                 <button className="elp-cancel" onClick={()=>setShowModal(false)}>Cancel</button>
-                <button className="elp-submit" onClick={handleSubmit} disabled={submitting}><Check size={15}/>{submitting?"Submitting...":"Submit Leave"}</button>
+                <button className="elp-submit" onClick={handleSubmit} disabled={submitting}>
+                  <Check size={15}/>{submitting?"Submitting...":"Submit Leave"}
+                </button>
               </div>
             </div>
           </div>
